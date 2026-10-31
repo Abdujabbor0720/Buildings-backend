@@ -338,7 +338,29 @@ va migratsiya ajralib ketgan.
 
 ## 8. Deploy
 
-Tayyor namuna: **`deploy/nginx.example.conf`** (izohlar bilan).
+### 8.1. Bazani tayyorlash (bir marta, serverda)
+
+```bash
+sudo DB_USERNAME=buildings \
+     DB_PASSWORD="$(openssl rand -base64 24 | tr -d '/+=')" \
+     DB_NAME=buildings_db \
+     bash scripts/provision-db.sh
+```
+
+Skript rolni yaratadi (bor bo'lsa parolini yangilaydi), bazani va
+`pg_trgm` kengaytmasini o'rnatadi, so'ng **parol haqiqatan ishlashini
+tekshiradi**.
+
+⚠️ `scripts/setup-db.sh` — faqat LOKAL ishlab chiqish uchun: uning
+oxirida `npm run seed` bor va u jadvallarni `TRUNCATE` qiladi.
+
+⚠️ `pg_trgm` ni oddiy foydalanuvchi o'rnata olmaydi. Busiz
+`SearchIndexes` migratsiyasi «permission denied to create extension»
+bilan yiqiladi — shuning uchun u superuser orqali oldindan qo'yiladi.
+
+### 8.2. Build va start
+
+Tayyor nginx namunasi: **`deploy/nginx.example.conf`** (izohlar bilan).
 
 ```bash
 npm ci --include=dev && npm run build && npm run migration:run   # build
