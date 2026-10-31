@@ -336,7 +336,30 @@ va migratsiya ajralib ketgan.
 
 ---
 
-## 8. Keyingi bosqich uchun eslatmalar
+## 8. Deploy
+
+Tayyor namuna: **`deploy/nginx.example.conf`** (izohlar bilan).
+
+```bash
+npm ci --include=dev && npm run build && npm run migration:run   # build
+npm run start:prod                                               # start
+```
+
+⚠️ **`npm run seed` deployga QO'YILMAYDI** — u jadvallarni `TRUNCATE`
+qiladi. Faqat bir marta, qo'lda.
+
+⚠️ **Nginx `client_max_body_size` — 110M.** Standart qiymat 1 MB va
+usiz 100 MB lik fayl Node'ga yetib bormasdan, proksi darajasida `413`
+oladi. Ilova jurnalida esa hech narsa ko'rinmaydi — shuning uchun bu
+xatoning sababini topish qiyin.
+
+⚠️ **Muhit o'zgaruvchilari majburiy.** `Joi` ularni tekshiradi va
+yetishmasa server ATAYLAB ishga tushmaydi (§1). Yarim sozlangan holatda
+ishlagan server eng yomoni: xato runtime'da, so'rov o'rtasida chiqadi.
+
+---
+
+## 9. Keyingi bosqich uchun eslatmalar
 
 - Fayllar DigitalOcean Spaces‘da (§4.8) — lokal `uploads/` papkasi yo‘q,
   shuning uchun bir nechta instansiya muammosiz ishlaydi.
