@@ -8,9 +8,9 @@ export const validationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
     .default('development'),
-  PORT: Joi.number().port().default(4000),
+  PORT: Joi.number().port().default(3333),
   API_PREFIX: Joi.string().default('api/v1'),
-  CORS_ORIGINS: Joi.string().default('http://localhost:5173'),
+  CORS_ORIGINS: Joi.string().default('http://localhost:4444'),
 
   DB_HOST: Joi.string().default('localhost'),
   DB_PORT: Joi.number().port().default(5432),

@@ -29,9 +29,9 @@ npm run migration:run
 npm run seed
 ```
 
-- API: `http://localhost:4000/api/v1`
-- Swagger: `http://localhost:4000/api/v1/docs`
-- Health: `http://localhost:4000/api/v1/health`
+- API: `http://localhost:3333/api/v1`
+- Swagger: `http://localhost:3333/api/v1/docs`
+- Health: `http://localhost:3333/api/v1/health`
 
 ⚠️ **Seed suratlarni DigitalOcean Spaces'ga yuklaydi**, shuning uchun
 `.env` da `DO_*` kalitlari to‘ldirilgan bo‘lishi kerak (§4.8). Sozlanmasa
