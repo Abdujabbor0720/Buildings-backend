@@ -1,0 +1,111 @@
+{
+  "_comment": "Obyekt nomlari shu shablonlardan yig‘iladi. {district} — tuman qisqa nomi, {n} — tartib raqami.",
+
+  "education": {
+    "capacityUnit": "o‘quvchi o‘rni",
+    "capacityRange": [220, 1200],
+    "costRangeSom": [18000000000, 62000000000],
+    "areaRange": [2400, 9800],
+    "floorsRange": [2, 4],
+    "names": [
+      "{district} tumani {n}-son umumta’lim maktabi",
+      "{district} tumani {n}-son maktabgacha ta’lim muassasasi",
+      "{district} tumani {n}-son ixtisoslashtirilgan maktabi",
+      "{district} kasb-hunar maktabi",
+      "{district} tumani {n}-son maktab yangi o‘quv korpusi",
+      "{district} Prezident maktabi o‘quv binosi",
+      "{district} tumani {n}-son bolalar bog‘chasi",
+      "{district} axborot texnologiyalari o‘quv markazi"
+    ]
+  },
+
+  "healthcare": {
+    "capacityUnit": "o‘rin",
+    "capacityRange": [40, 420],
+    "costRangeSom": [24000000000, 96000000000],
+    "areaRange": [1800, 12000],
+    "floorsRange": [2, 6],
+    "names": [
+      "{district} tumani markaziy poliklinikasi",
+      "{district} tumani {n}-son oilaviy poliklinikasi",
+      "{district} tumani tug‘ruqxonasi",
+      "{district} tumani markaziy kasalxonasi rekonstruksiyasi",
+      "{district} shoshilinch tibbiy yordam bo‘limi",
+      "{district} tumani {n}-son qishloq vrachlik punkti",
+      "{district} ko‘p tarmoqli tibbiyot markazi",
+      "{district} tumani stomatologiya poliklinikasi"
+    ]
+  },
+
+  "infrastructure": {
+    "capacityUnit": "km",
+    "capacityRange": [2, 46],
+    "costRangeSom": [12000000000, 180000000000],
+    "areaRange": [0, 0],
+    "floorsRange": [0, 0],
+    "names": [
+      "{district} tumani ichki yo‘llarini qayta qurish",
+      "{district} tumani avtomobil yo‘llarini ta’mirlash",
+      "{district} tumani suv ta’minoti tarmog‘i",
+      "{district} tumani kanalizatsiya kollektori",
+      "{district} tumani ko‘chalarini yoritish tizimi",
+      "{district} tumani suv inshooti",
+      "{district} tumani gaz taqsimlash tarmog‘i",
+      "{district} tumani ko‘prigi rekonstruksiyasi"
+    ]
+  },
+
+  "social": {
+    "capacityUnit": "o‘rin",
+    "capacityRange": [120, 1500],
+    "costRangeSom": [9000000000, 74000000000],
+    "areaRange": [900, 14000],
+    "floorsRange": [1, 4],
+    "names": [
+      "{district} tumani madaniyat va istirohat bog‘i",
+      "{district} tumani sport majmuasi",
+      "{district} tumani yoshlar markazi",
+      "{district} tumani madaniyat uyi",
+      "{district} tumani markaziy kutubxonasi",
+      "{district} tumani sport zali",
+      "{district} tumani mahalla markazi binosi",
+      "{district} tumani suzish havzasi"
+    ]
+  },
+
+  "industry": {
+    "capacityUnit": "ish o‘rni",
+    "capacityRange": [60, 1800],
+    "costRangeSom": [38000000000, 240000000000],
+    "areaRange": [3000, 42000],
+    "floorsRange": [1, 3],
+    "names": [
+      "{district} tumani kichik sanoat zonasi",
+      "{district} tumani to‘qimachilik fabrikasi",
+      "{district} tumani oziq-ovqat sanoati korxonasi",
+      "{district} tumani agrologistika markazi",
+      "{district} tumani qurilish materiallari zavodi",
+      "{district} tumani sovutkich omborxonasi",
+      "{district} tumani sanoat parki infratuzilmasi",
+      "{district} tumani mevalarni qayta ishlash korxonasi"
+    ]
+  },
+
+  "other": {
+    "capacityUnit": "o‘rin",
+    "capacityRange": [30, 600],
+    "costRangeSom": [6000000000, 45000000000],
+    "areaRange": [400, 7000],
+    "floorsRange": [1, 5],
+    "names": [
+      "{district} tumani hokimligi ma’muriy binosi",
+      "{district} tumani favqulodda vaziyatlar bo‘limi binosi",
+      "{district} tumani davlat xizmatlari markazi",
+      "{district} tumani arxiv binosi",
+      "{district} tumani ichki ishlar bo‘limi binosi",
+      "{district} tumani veterinariya stansiyasi",
+      "{district} tumani obodonlashtirish ishlari",
+      "{district} tumani avtoturargohi"
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+[
+  {
+    "code": "funding",
+    "name": "Moliyalashtirish kechikishi",
+    "color": "#DC6A06",
+    "icon": "banknote",
+    "sortOrder": 1
+  },
+  {
+    "code": "materials",
+    "name": "Qurilish materiallari yetishmasligi",
+    "color": "#2A72C8",
+    "icon": "package",
+    "sortOrder": 2
+  },
+  {
+    "code": "contractor",
+    "name": "Pudratchi quvvati yetishmasligi",
+    "color": "#3E8A1E",
+    "icon": "hard-hat",
+    "sortOrder": 3
+  },
+  {
+    "code": "weather",
+    "name": "Ob-havo sharoiti",
+    "color": "#7C4DD6",
+    "icon": "cloud-rain",
+    "sortOrder": 4
+  },
+  {
+    "code": "documents",
+    "name": "Loyiha hujjatlaridagi o‘zgarish",
+    "color": "#C9315F",
+    "icon": "file-text",
+    "sortOrder": 5
+  },
+  {
+    "code": "other",
+    "name": "Boshqa sabablar",
+    "color": "#B4B4BC",
+    "icon": "circle-ellipsis",
+    "sortOrder": 6
+  }
+]

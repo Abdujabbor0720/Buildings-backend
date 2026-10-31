@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    // Global tur paketlari ANIQ sanaladi: `multer` Express nomlar
+    // fazosini kengaytiradi (`Express.Multer.File`), `jest` esa
+    // `describe`/`it`/`expect` globallarini beradi.
+    "types": ["node", "jest", "multer"],
+
+    "strict": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "resolvePackageJsonExports": true,
+    "isolatedModules": true,
+
+    "declaration": false,
+    "removeComments": false,
+    "sourceMap": true,
+    "incremental": true,
+    "skipLibCheck": true,
+
+    // `rootDir` TS 6 da aniq ko‘rsatilishi kerak. Bu yerda loyiha ildizi
+    // (src + test), build konfiguratsiyasida esa `./src` — dist ichida
+    // ortiqcha `src/` papkasi paydo bo‘lmasligi uchun.
+    "rootDir": "./",
+    "outDir": "./dist",
+    "paths": { "src/*": ["./src/*"] }
+  },
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

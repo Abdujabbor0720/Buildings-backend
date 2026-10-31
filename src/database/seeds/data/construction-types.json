@@ -1,0 +1,44 @@
+[
+  {
+    "code": "education",
+    "name": "Ta’lim muassasalari",
+    "color": "#DC6A06",
+    "icon": "graduation-cap",
+    "sortOrder": 1
+  },
+  {
+    "code": "healthcare",
+    "name": "Sog‘liqni saqlash",
+    "color": "#2A72C8",
+    "icon": "stethoscope",
+    "sortOrder": 2
+  },
+  {
+    "code": "infrastructure",
+    "name": "Yo‘l va infratuzilma",
+    "color": "#3E8A1E",
+    "icon": "route",
+    "sortOrder": 3
+  },
+  {
+    "code": "social",
+    "name": "Ijtimoiy obyektlar",
+    "color": "#7C4DD6",
+    "icon": "users",
+    "sortOrder": 4
+  },
+  {
+    "code": "industry",
+    "name": "Sanoat",
+    "color": "#C9315F",
+    "icon": "factory",
+    "sortOrder": 5
+  },
+  {
+    "code": "other",
+    "name": "Boshqa",
+    "color": "#B4B4BC",
+    "icon": "building-2",
+    "sortOrder": 6
+  }
+]

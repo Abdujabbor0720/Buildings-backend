@@ -1,0 +1,68 @@
+{
+  "_comment": "Seed generatori shu taqsimotga QAT'IY amal qiladi. Raqamlar dashboard maketidan olingan: ularni o‘zgartirsangiz, bosh sahifadagi kartalar ham o‘zgaradi.",
+
+  "activeObjects": 195,
+  "completedObjects": 22,
+  "cancelledObjects": 3,
+
+  "byDistrict": {
+    "andijon": 28,
+    "baliqchi": 24,
+    "boz": 17,
+    "oltinkol": 18,
+    "shahrixon": 16,
+    "marhamat": 15,
+    "buloqboshi": 14,
+    "qorgontepa": 13,
+    "izboskan": 12,
+    "jalaquduq": 11,
+    "ulugnor": 10,
+    "asaka": 5,
+    "paxtaobod": 4,
+    "xojaobod": 3,
+    "andijon_sh": 3,
+    "xonobod_sh": 2
+  },
+
+  "byType": {
+    "education": 56,
+    "healthcare": 38,
+    "infrastructure": 32,
+    "social": 28,
+    "industry": 24,
+    "other": 17
+  },
+
+  "byDeadline": {
+    "currentYear": 87,
+    "nextYear": 68,
+    "beyond": 40
+  },
+
+  "byHealth": {
+    "on_schedule": 130,
+    "not_started": 12,
+    "delayed": 38,
+    "at_risk": 15
+  },
+
+  "delayRecordsByReason": {
+    "funding": 36,
+    "materials": 28,
+    "contractor": 21,
+    "weather": 13,
+    "documents": 8,
+    "other": 6
+  },
+
+  "totalCostTargetSom": 7400000000000,
+
+  "fundingSourceWeights": {
+    "state_budget": 42,
+    "region_budget": 24,
+    "district_budget": 12,
+    "bank_credit": 9,
+    "private_investment": 8,
+    "international_grant": 5
+  }
+}

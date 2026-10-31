@@ -1,0 +1,33 @@
+[
+  { "email": "admin@shaffofqurilish.uz", "password": "Admin2026!", "firstName": "Tizim", "lastName": "Administratori", "position": "Bosh administrator", "phone": "+998901110001", "role": "super_admin" },
+
+  { "email": "hokim@andijon.uz", "password": "Hokim2026!", "firstName": "Jahongir", "lastName": "Karimov", "middleName": "Baxtiyorovich", "position": "Viloyat hokimi", "phone": "+998901110002", "role": "governor", "scope": "region" },
+
+  { "email": "q.boshqarma@andijon.uz", "password": "Boshqarma2026!", "firstName": "Alisher", "lastName": "Tursunov", "position": "Qurilish boshqarmasi boshlig‘i", "phone": "+998901110003", "role": "region_admin", "scope": "region" },
+  { "email": "n.rahimova@andijon.uz", "password": "Nazorat2026!", "firstName": "Nodira", "lastName": "Rahimova", "position": "Monitoring bo‘limi boshlig‘i", "phone": "+998901110004", "role": "region_admin", "scope": "region" },
+
+  { "email": "andijon.tuman@andijon.uz", "password": "Tuman2026!", "firstName": "Sardor", "lastName": "Ismoilov", "position": "Tuman qurilish bo‘limi boshlig‘i", "phone": "+998901110010", "role": "district_admin", "scope": "district", "districtCode": "andijon" },
+  { "email": "baliqchi.tuman@andijon.uz", "password": "Tuman2026!", "firstName": "Ravshan", "lastName": "Qodirov", "position": "Tuman qurilish bo‘limi boshlig‘i", "phone": "+998901110011", "role": "district_admin", "scope": "district", "districtCode": "baliqchi" },
+  { "email": "oltinkol.tuman@andijon.uz", "password": "Tuman2026!", "firstName": "Dilshod", "lastName": "Mirzayev", "position": "Tuman qurilish bo‘limi boshlig‘i", "phone": "+998901110012", "role": "district_admin", "scope": "district", "districtCode": "oltinkol" },
+  { "email": "boz.tuman@andijon.uz", "password": "Tuman2026!", "firstName": "Shavkat", "lastName": "Alimov", "position": "Tuman qurilish bo‘limi boshlig‘i", "phone": "+998901110013", "role": "district_admin", "scope": "district", "districtCode": "boz" },
+  { "email": "shahrixon.tuman@andijon.uz", "password": "Tuman2026!", "firstName": "Jamshid", "lastName": "Ergashev", "position": "Tuman qurilish bo‘limi boshlig‘i", "phone": "+998901110014", "role": "district_admin", "scope": "district", "districtCode": "shahrixon" },
+  { "email": "marhamat.tuman@andijon.uz", "password": "Tuman2026!", "firstName": "Ulug‘bek", "lastName": "Toshmatov", "position": "Tuman qurilish bo‘limi boshlig‘i", "phone": "+998901110015", "role": "district_admin", "scope": "district", "districtCode": "marhamat" },
+
+  { "email": "k.sobirov@andijon.uz", "password": "Masul2026!", "firstName": "Kamol", "lastName": "Sobirov", "position": "Bosh kurator", "phone": "+998901110020", "role": "supervisor", "scope": "region" },
+  { "email": "m.yusupova@andijon.uz", "password": "Masul2026!", "firstName": "Malika", "lastName": "Yusupova", "position": "Ta’lim obyektlari kuratori", "phone": "+998901110021", "role": "supervisor", "scope": "region" },
+  { "email": "b.nazarov@andijon.uz", "password": "Masul2026!", "firstName": "Bekzod", "lastName": "Nazarov", "position": "Sog‘liqni saqlash obyektlari kuratori", "phone": "+998901110022", "role": "supervisor", "scope": "region" },
+  { "email": "f.hasanov@andijon.uz", "password": "Masul2026!", "firstName": "Farrux", "lastName": "Hasanov", "position": "Yo‘l va infratuzilma kuratori", "phone": "+998901110023", "role": "supervisor", "scope": "region" },
+  { "email": "g.abdullayeva@andijon.uz", "password": "Masul2026!", "firstName": "Gulnora", "lastName": "Abdullayeva", "position": "Ijtimoiy obyektlar kuratori", "phone": "+998901110024", "role": "supervisor", "scope": "region" },
+  { "email": "a.normurodov@andijon.uz", "password": "Masul2026!", "firstName": "Aziz", "lastName": "Normurodov", "position": "Sanoat obyektlari kuratori", "phone": "+998901110025", "role": "supervisor", "scope": "region" },
+  { "email": "s.xolmatov@andijon.uz", "password": "Masul2026!", "firstName": "Sanjar", "lastName": "Xolmatov", "position": "Qurilish nazoratchisi", "phone": "+998901110026", "role": "supervisor", "scope": "region" },
+  { "email": "z.umarov@andijon.uz", "password": "Masul2026!", "firstName": "Zafar", "lastName": "Umarov", "position": "Qurilish nazoratchisi", "phone": "+998901110027", "role": "supervisor", "scope": "region" },
+  { "email": "d.kamolov@andijon.uz", "password": "Masul2026!", "firstName": "Doniyor", "lastName": "Kamolov", "position": "Qurilish nazoratchisi", "phone": "+998901110028", "role": "supervisor", "scope": "region" },
+  { "email": "n.soliyev@andijon.uz", "password": "Masul2026!", "firstName": "Nodirbek", "lastName": "Soliyev", "position": "Qurilish nazoratchisi", "phone": "+998901110029", "role": "supervisor", "scope": "region" },
+
+  { "email": "pudrat1@aqi.uz", "password": "Pudrat2026!", "firstName": "Shuhrat", "lastName": "Mamatqulov", "position": "Direktor", "phone": "+998901234501", "role": "contractor", "contractorInn": "301234561" },
+  { "email": "pudrat2@fvq.uz", "password": "Pudrat2026!", "firstName": "Otabek", "lastName": "Yo‘ldoshev", "position": "Direktor", "phone": "+998901234502", "role": "contractor", "contractorInn": "301234562" },
+  { "email": "pudrat3@uzavtoyul.uz", "password": "Pudrat2026!", "firstName": "Farrux", "lastName": "Hasanov", "position": "Filial boshlig‘i", "phone": "+998901234507", "role": "contractor", "contractorInn": "301234567" },
+  { "email": "pudrat4@corp.uz", "password": "Pudrat2026!", "firstName": "Komil", "lastName": "Rahmonov", "position": "Direktor", "phone": "+998901234518", "role": "contractor", "contractorInn": "301234578" },
+
+  { "email": "kuzatuvchi@andijon.uz", "password": "Kuzat2026!", "firstName": "Kuzatuvchi", "lastName": "Foydalanuvchi", "position": "Jamoatchilik vakili", "phone": "+998901110099", "role": "viewer", "scope": "region" }
+]

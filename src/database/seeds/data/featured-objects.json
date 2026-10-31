@@ -1,0 +1,156 @@
+{
+  "_comment": "Maketdagi ANIQ qatorlar (TOP-5 kechikayotgan, yaqin muddatdagilar, so‘nggi foto-hisobotlar). Generator avval shularni yaratadi, keyin qolgan obyektlarni taqsimotga moslab to‘ldiradi. `targetSlipDays` — reja egri chizig‘idan ortda qolish; boshlanish sanasi shundan TESKARI hisoblanadi.",
+
+  "objects": [
+    {
+      "key": "baliqchi-maktab-2",
+      "name": "Baliqchi tumani 2-son umumta’lim maktabi",
+      "districtCode": "baliqchi",
+      "typeCode": "education",
+      "plannedEndDate": "2026-12-30",
+      "progressPercent": 65,
+      "targetSlipDays": 42,
+      "totalCost": "48500000000.00",
+      "capacity": 640,
+      "delayReasons": ["materials", "funding"],
+      "address": "Baliqchi tumani, Navoiy ko‘chasi 14-uy"
+    },
+    {
+      "key": "andijon-poliklinika",
+      "name": "Andijon tumani markaziy poliklinikasi",
+      "districtCode": "andijon",
+      "typeCode": "healthcare",
+      "plannedEndDate": "2026-11-15",
+      "progressPercent": 70,
+      "targetSlipDays": 28,
+      "totalCost": "62400000000.00",
+      "capacity": 220,
+      "delayReasons": ["funding"],
+      "address": "Andijon tumani, Qo‘shtepa MFY"
+    },
+    {
+      "key": "marhamat-sanoat",
+      "name": "Marhamat tumani kichik sanoat zonasi",
+      "districtCode": "marhamat",
+      "typeCode": "industry",
+      "plannedEndDate": "2026-12-20",
+      "progressPercent": 60,
+      "targetSlipDays": 25,
+      "totalCost": "128000000000.00",
+      "capacity": 850,
+      "delayReasons": ["contractor", "materials"],
+      "address": "Marhamat tumani, Sanoat zonasi"
+    },
+    {
+      "key": "oltinkol-suv",
+      "name": "Oltinko‘l tumani suv inshooti",
+      "districtCode": "oltinkol",
+      "typeCode": "infrastructure",
+      "plannedEndDate": "2026-11-10",
+      "progressPercent": 72,
+      "targetSlipDays": 18,
+      "totalCost": "34700000000.00",
+      "capacity": 12,
+      "delayReasons": ["weather"],
+      "address": "Oltinko‘l tumani, Suvchilar MFY"
+    },
+    {
+      "key": "boz-sport",
+      "name": "Bo‘z tumani sport majmuasi",
+      "districtCode": "boz",
+      "typeCode": "social",
+      "plannedEndDate": "2026-12-25",
+      "progressPercent": 68,
+      "targetSlipDays": 15,
+      "totalCost": "41200000000.00",
+      "capacity": 900,
+      "delayReasons": ["documents"],
+      "address": "Bo‘z tumani, Istiqlol ko‘chasi 6-uy"
+    },
+
+    {
+      "key": "andijon-it-markaz",
+      "name": "Andijon axborot texnologiyalari o‘quv markazi",
+      "districtCode": "andijon",
+      "typeCode": "education",
+      "plannedEndDate": "2026-11-10",
+      "progressPercent": 92,
+      "targetSlipDays": 2,
+      "totalCost": "54300000000.00",
+      "capacity": 760,
+      "delayReasons": [],
+      "address": "Andijon tumani, Yangi hayot MFY"
+    },
+    {
+      "key": "baliqchi-bogcha",
+      "name": "Baliqchi tumani 3-son bolalar bog‘chasi",
+      "districtCode": "baliqchi",
+      "typeCode": "education",
+      "plannedEndDate": "2026-11-25",
+      "progressPercent": 88,
+      "targetSlipDays": 3,
+      "totalCost": "19800000000.00",
+      "capacity": 280,
+      "delayReasons": [],
+      "address": "Baliqchi tumani, Bog‘ishamol MFY"
+    },
+    {
+      "key": "shahrixon-maktab",
+      "name": "Shahrixon tumani 7-son umumta’lim maktabi",
+      "districtCode": "shahrixon",
+      "typeCode": "education",
+      "plannedEndDate": "2026-12-01",
+      "progressPercent": 85,
+      "targetSlipDays": 4,
+      "totalCost": "43100000000.00",
+      "capacity": 580,
+      "delayReasons": [],
+      "address": "Shahrixon tumani, Yangiobod MFY"
+    },
+    {
+      "key": "izboskan-sport-zali",
+      "name": "Izboskan tumani sport zali",
+      "districtCode": "izboskan",
+      "typeCode": "social",
+      "plannedEndDate": "2026-12-15",
+      "progressPercent": 80,
+      "targetSlipDays": 5,
+      "totalCost": "16400000000.00",
+      "capacity": 420,
+      "delayReasons": [],
+      "address": "Izboskan tumani, Paxtakor MFY"
+    },
+    {
+      "key": "marhamat-poliklinika",
+      "name": "Marhamat tumani markaziy poliklinikasi",
+      "districtCode": "marhamat",
+      "typeCode": "healthcare",
+      "plannedEndDate": "2026-12-28",
+      "progressPercent": 78,
+      "targetSlipDays": 6,
+      "totalCost": "57900000000.00",
+      "capacity": 180,
+      "delayReasons": [],
+      "address": "Marhamat tumani, Do‘stlik MFY"
+    },
+    {
+      "key": "oltinkol-yol",
+      "name": "Oltinko‘l tumani ichki yo‘llarini qayta qurish",
+      "districtCode": "oltinkol",
+      "typeCode": "infrastructure",
+      "plannedEndDate": "2027-03-20",
+      "progressPercent": 72,
+      "targetSlipDays": 4,
+      "totalCost": "72500000000.00",
+      "capacity": 28,
+      "delayReasons": [],
+      "address": "Oltinko‘l tumani, markaziy yo‘nalish"
+    }
+  ],
+
+  "photoReports": [
+    { "objectKey": "baliqchi-maktab-2", "capturedAt": "2026-10-29T14:32:00+05:00", "progressPercent": 65, "note": "Ichki pardozlash ishlari davom etmoqda. Tom qoplamasi yakunlandi." },
+    { "objectKey": "oltinkol-yol", "capturedAt": "2026-10-28T11:20:00+05:00", "progressPercent": 72, "note": "Asfalt-beton qoplamaning birinchi qatlami yotqizildi." },
+    { "objectKey": "marhamat-poliklinika", "capturedAt": "2026-10-27T16:45:00+05:00", "progressPercent": 78, "note": "Muhandislik tarmoqlari ulanmoqda, fasad ishlari 80% bajarildi." }
+  ]
+}
