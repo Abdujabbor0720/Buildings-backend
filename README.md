@@ -358,9 +358,34 @@ oxirida `npm run seed` bor va u jadvallarni `TRUNCATE` qiladi.
 `SearchIndexes` migratsiyasi «permission denied to create extension»
 bilan yiqiladi — shuning uchun u superuser orqali oldindan qo'yiladi.
 
-### 8.2. Build va start
+### 8.2. Domenlar
+
+| | Domen |
+|---|---|
+| Frontend | `https://qurilish.mysrv.uz` |
+| Backend (API) | `https://qurilish-api.mysrv.uz` |
+
+Ular ALOHIDA domenda, shuning uchun ikkita sozlama bir-biriga mos
+bo'lishi SHART:
+
+| Qayerda | Qiymat |
+|---|---|
+| Backend paneli | `CORS_ORIGINS=https://qurilish.mysrv.uz` |
+| Frontend paneli (build-time) | `VITE_API_URL=https://qurilish-api.mysrv.uz/api/v1` |
+
+⚠️ `CORS_ORIGINS` da `http://` yoki oxirida `/` bo'lsa MOS KELMAYDI va
+brauzer har so'rovni bloklaydi — server jurnalida esa xato
+**ko'rinmaydi**, chunki so'rov brauzerning o'zida to'xtaydi.
+
+### 8.3. Build va start
 
 Tayyor nginx namunasi: **`deploy/nginx.example.conf`** (izohlar bilan).
+
+HTTPS bir marta:
+
+```bash
+certbot --nginx -d qurilish-api.mysrv.uz
+```
 
 ```bash
 npm ci --include=dev && npm run build && npm run migration:run   # build
