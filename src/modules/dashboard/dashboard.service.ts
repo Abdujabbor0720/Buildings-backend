@@ -63,7 +63,15 @@ export interface DashboardSummary {
 
 export interface DeadlineBucket {
   label: string;
+  /**
+   * ⚠️ `null` IKKI XIL guruhda uchraydi: «Muddati o‘tgan» va «2028+».
+   * Shuning uchun u HOLAT BELGISI sifatida ishlatilmaydi — buning uchun
+   * `overdue` bor. Ilgari mijoz `year === null` ni «muddati o‘tgan» deb
+   * o‘qib, «2028+» ulushini qizil rangda chizardi.
+   */
   year: number | null;
+  /** Muddati ALLAQACHON o‘tgan guruh — tartibli rampadan tashqarida. */
+  overdue: boolean;
   count: number;
   percent: number;
   color: string;
@@ -337,6 +345,7 @@ export class DashboardService {
       buckets.push({
         label: 'Muddati o‘tgan',
         year: null,
+        overdue: true,
         count: before,
         percent: pct(before, total),
         color: '#B42318',
@@ -346,6 +355,7 @@ export class DashboardService {
       {
         label: `${base}-yil`,
         year: base,
+        overdue: false,
         count: inYear(base),
         percent: pct(inYear(base), total),
         color: DEADLINE_COLORS[0],
@@ -353,13 +363,18 @@ export class DashboardService {
       {
         label: `${base + 1}-yil`,
         year: base + 1,
+        overdue: false,
         count: inYear(base + 1),
         percent: pct(inYear(base + 1), total),
         color: DEADLINE_COLORS[1],
       },
       {
         label: `${base + 2}+`,
+        // ⚠️ `year: null` — bu OCHIQ guruh (2028 va undan keyin), bitta
+        // yil emas. «Muddati o‘tgan» bilan chalkashmasligi uchun
+        // `overdue: false`.
         year: null,
+        overdue: false,
         count: beyond,
         percent: pct(beyond, total),
         color: DEADLINE_COLORS[2],

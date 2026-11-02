@@ -2,37 +2,37 @@
   {
     "code": "state_budget",
     "name": "Davlat budjeti",
-    "color": "#DC6A06",
+    "color": "#0F5FE0",
     "sortOrder": 1
   },
   {
     "code": "region_budget",
     "name": "Viloyat budjeti",
-    "color": "#2A72C8",
+    "color": "#0A6E3A",
     "sortOrder": 2
   },
   {
     "code": "district_budget",
     "name": "Tuman budjeti",
-    "color": "#3E8A1E",
+    "color": "#EC9A35",
     "sortOrder": 3
   },
   {
     "code": "bank_credit",
     "name": "Bank krediti",
-    "color": "#7C4DD6",
+    "color": "#7628B2",
     "sortOrder": 4
   },
   {
     "code": "private_investment",
     "name": "Xususiy investitsiya",
-    "color": "#C9315F",
+    "color": "#B32430",
     "sortOrder": 5
   },
   {
     "code": "international_grant",
     "name": "Xalqaro grant",
-    "color": "#A97400",
+    "color": "#8A9CB0",
     "sortOrder": 6
   }
 ]
