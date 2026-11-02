@@ -293,6 +293,83 @@ async function ensureAdmin(
   report.lines.push(`administrator: ${email} YARATILDI`);
 }
 
+/* ───────────── .env administratorini majburan yozish ───────────── */
+
+/** `.env` dagi administrator qiymatlari — bitta joyda o‘qiladi. */
+export function envAdminCredentials(): AdminCredentials {
+  return {
+    email: process.env.ADMIN_EMAIL,
+    password: process.env.ADMIN_PASSWORD,
+    firstName: process.env.ADMIN_FIRST_NAME,
+    lastName: process.env.ADMIN_LAST_NAME,
+    phone: process.env.ADMIN_PHONE,
+  };
+}
+
+/**
+ * `.env` dagi administrator hisobini MAJBURAN yozadi (yaratadi yoki
+ * parolini yangilaydi).
+ *
+ * ⚠️ `ensureAdmin` DAN FARQI SHU: u bazada birorta `super_admin` bo‘lsa
+ * chetlab o‘tadi, bu esa o‘tmaydi.
+ *
+ * Nima uchun kerak: seed `users` jadvalini TRUNCATE qiladi va o‘z
+ * foydalanuvchilarini yozadi. Shundan keyin odam `.env` dagi parol bilan
+ * kira olmay qolardi — uning hisobi o‘chgan, `BootstrapService` esa uni
+ * tiklamaydi (bazada seed admini bor). Shuning uchun seed oxirida AYNAN
+ * shu funksiya chaqiriladi.
+ *
+ * ⚠️ Faqat seed yo‘lida ishlatiladi. Ilova ko‘tarilganda chaqirilsa,
+ * `.env` ni o‘zgartira oladigan har kim istalgan hisobning parolini
+ * bosib yozardi — aynan shuning uchun `ensureAdmin` boshqacha.
+ */
+export async function upsertEnvAdmin(
+  em: EntityManager,
+  creds: AdminCredentials,
+): Promise<string | null> {
+  const email = (creds.email ?? '').trim().toLowerCase();
+  const password = creds.password ?? '';
+  if (!email || !password) return null;
+
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(
+      `ADMIN_PASSWORD juda qisqa — kamida ${MIN_PASSWORD_LENGTH} belgi kerak`,
+    );
+  }
+
+  const passwordHash = await hash(password, BCRYPT_ROUNDS);
+  const region = await em.findOne(Region, { where: { code: 'andijon' } });
+  const existing = await em.findOne(User, { where: { email } });
+
+  if (existing) {
+    await em.update(
+      User,
+      { id: existing.id },
+      { passwordHash, role: UserRole.SUPER_ADMIN, isActive: true },
+    );
+    return email;
+  }
+
+  await em.save(
+    em.create(User, {
+      email,
+      passwordHash,
+      firstName: creds.firstName?.trim() || 'Tizim',
+      lastName: creds.lastName?.trim() || 'Administratori',
+      middleName: null,
+      position: 'Tizim administratori',
+      phone: creds.phone?.trim() || null,
+      avatarUrl: null,
+      role: UserRole.SUPER_ADMIN,
+      isActive: true,
+      regionId: region?.id ?? null,
+      districtId: null,
+      contractorId: null,
+    }),
+  );
+  return email;
+}
+
 /* ───────────────────────── Umumiy kirish nuqtasi ───────────────────────── */
 
 /**

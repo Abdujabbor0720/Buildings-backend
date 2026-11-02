@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DataSource, EntityManager } from 'typeorm';
 import { AppDataSource } from '../../config/data-source';
+import { envAdminCredentials, upsertEnvAdmin } from '../bootstrap/bootstrap.helpers';
 import { SeedStorage } from './seed-storage';
 import {
   AiAnalysisType,
@@ -192,6 +193,17 @@ async function main(): Promise<void> {
       await seedNotifications(em, objects, users, today);
       await seedSettings(em);
       await recalculateContractorRatings(em);
+      // ⚠️ SEED `users` JADVALINI HAM TOZALAYDI — `.env` dagi
+      // administrator hisobi o‘chib ketardi va `BootstrapService` uni
+      // tiklamasdi (bazada seed admini bor). Shuning uchun u oxirida
+      // QAYTA yoziladi: demo ma’lumot ham, odamning o‘z paroli ham
+      // joyida qoladi.
+      const envAdmin = await upsertEnvAdmin(em, envAdminCredentials());
+      console.log(
+        envAdmin
+          ? `👤 ${envAdmin} — .env dagi administrator saqlab qolindi`
+          : '👤 ADMIN_EMAIL berilmagan — seed administratoridan foydalaning',
+      );
     });
 
     await report(dataSource, startedAt);
