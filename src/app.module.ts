@@ -12,6 +12,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { BootstrapModule } from './database/bootstrap/bootstrap.module';
 import { AiModule } from './modules/ai/ai.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -87,6 +88,12 @@ import { UsersModule } from './modules/users/users.module';
     }),
 
     ScheduleModule.forRoot(),
+
+    // ⚠️ Domen modullaridan OLDIN: bo‘sh bazada tumanlar, kataloglar va
+    // birinchi administrator shu yerda yoziladi. `onApplicationBootstrap`
+    // baribir hamma modul tayyor bo‘lgach ishlaydi, lekin ro‘yxatdagi o‘rni
+    // nimaga bog‘liqligini ko‘rsatib turadi: u hech kimga bog‘liq emas.
+    BootstrapModule,
 
     // ─────── Umumiy (global) modullar ───────
     AuditModule,

@@ -46,6 +46,19 @@ export const validationSchema = Joi.object({
   AI_VISION_MAX_IMAGES: Joi.number().min(1).max(10).default(4),
   AI_VISION_TIMEOUT_MS: Joi.number().min(5000).max(300000).default(90000),
 
+  // ───────── Birinchi administrator ─────────
+  // ⚠️ FAQAT bo‘sh bazada o‘qiladi: `BootstrapService` bazada birorta
+  // `super_admin` yo‘qligini ko‘rsa shu qiymatlardan yaratadi. Mavjud
+  // administratorning paroli BU YERDAN o‘zgarmaydi — aks holda .env ni
+  // tahrirlagan odam istalgan hisobni egallab olardi.
+  ADMIN_EMAIL: Joi.string().allow('').default(''),
+  ADMIN_PASSWORD: Joi.string().allow('').min(8).default('').messages({
+    'string.min': 'ADMIN_PASSWORD kamida 8 belgi bo‘lishi kerak',
+  }),
+  ADMIN_FIRST_NAME: Joi.string().allow('').default(''),
+  ADMIN_LAST_NAME: Joi.string().allow('').default(''),
+  ADMIN_PHONE: Joi.string().allow('').default(''),
+
   THROTTLE_TTL: Joi.number().default(60),
   THROTTLE_LIMIT: Joi.number().default(200),
 });

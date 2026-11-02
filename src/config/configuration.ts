@@ -43,6 +43,18 @@ export interface AppConfig {
     maxImagesPerReport: number;
     timeoutMs: number;
   };
+  /**
+   * Birinchi administrator — bo‘sh bazada ilova ko‘tarilganda yaratiladi.
+   * ⚠️ MAVJUD administratorga ta’sir qilmaydi: parolni bu yerdan
+   * o‘zgartirib bo‘lmaydi, u faqat «hech kim yo‘q» holatida o‘qiladi.
+   */
+  admin: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+  };
   throttle: { ttl: number; limit: number };
 }
 
@@ -74,6 +86,13 @@ export default (): AppConfig => ({
     refreshSecret:
       process.env.JWT_REFRESH_SECRET ?? 'dev-refresh-secret-change-me',
     refreshTtl: process.env.JWT_REFRESH_TTL ?? '30d',
+  },
+  admin: {
+    email: (process.env.ADMIN_EMAIL ?? '').trim(),
+    password: process.env.ADMIN_PASSWORD ?? '',
+    firstName: (process.env.ADMIN_FIRST_NAME ?? '').trim(),
+    lastName: (process.env.ADMIN_LAST_NAME ?? '').trim(),
+    phone: (process.env.ADMIN_PHONE ?? '').trim(),
   },
   upload: {
     maxFileSizeMb: parseInt(process.env.UPLOAD_MAX_MB ?? '100', 10),
