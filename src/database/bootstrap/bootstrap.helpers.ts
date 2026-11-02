@@ -53,9 +53,9 @@ function dataDir(): string {
   const found = DATA_DIR_CANDIDATES.find((d) => existsSync(d));
   if (!found) {
     throw new Error(
-      'Boshlang\'ich ma\'lumot papkasi topilmadi. Qaralgan joylar: ' +
+      "Boshlang'ich ma'lumot papkasi topilmadi. Qaralgan joylar: " +
         DATA_DIR_CANDIDATES.join(', ') +
-        '. `nest-cli.json` dagi `assets` sozlamasi o\'chirilgan bo\'lishi mumkin.',
+        ". `nest-cli.json` dagi `assets` sozlamasi o'chirilgan bo'lishi mumkin.",
     );
   }
   return found;
@@ -165,7 +165,11 @@ async function ensureCatalogs(em: EntityManager, out: string[]): Promise<void> {
   if ((await em.count(ConstructionType)) === 0) {
     const rows = await em.save(
       readJson<CatalogRow[]>('construction-types.json').map((r) =>
-        em.create(ConstructionType, { ...r, icon: r.icon ?? null, isActive: true }),
+        em.create(ConstructionType, {
+          ...r,
+          icon: r.icon ?? null,
+          isActive: true,
+        }),
       ),
     );
     out.push(`qurilish turlari: ${rows.length} ta QO‘SHILDI`);
@@ -235,7 +239,9 @@ async function ensureAdmin(
   creds: AdminCredentials,
   report: BootstrapReport,
 ): Promise<void> {
-  const admins = await em.count(User, { where: { role: UserRole.SUPER_ADMIN } });
+  const admins = await em.count(User, {
+    where: { role: UserRole.SUPER_ADMIN },
+  });
   if (admins > 0) {
     report.lines.push(`administrator: bor (${admins} ta)`);
     return;
@@ -246,7 +252,9 @@ async function ensureAdmin(
 
   if (!email || !password) {
     report.adminMissing = true;
-    report.lines.push('administrator: YO‘Q va ADMIN_EMAIL/ADMIN_PASSWORD berilmagan');
+    report.lines.push(
+      'administrator: YO‘Q va ADMIN_EMAIL/ADMIN_PASSWORD berilmagan',
+    );
     return;
   }
 
@@ -383,7 +391,11 @@ export async function runBootstrap(
   em: EntityManager,
   creds: AdminCredentials = {},
 ): Promise<BootstrapReport> {
-  const report: BootstrapReport = { lines: [], adminCreated: null, adminMissing: false };
+  const report: BootstrapReport = {
+    lines: [],
+    adminCreated: null,
+    adminMissing: false,
+  };
 
   await ensureGeo(em, report.lines);
   await ensureCatalogs(em, report.lines);
@@ -402,10 +414,10 @@ export async function runBootstrapLocked(
   em: EntityManager,
   creds: AdminCredentials = {},
 ): Promise<BootstrapReport | null> {
-  const [{ locked }] = (await em.query(
+  const [{ locked }] = await em.query<Array<{ locked: boolean }>>(
     'SELECT pg_try_advisory_xact_lock($1) AS locked',
     [BOOTSTRAP_LOCK_KEY],
-  )) as Array<{ locked: boolean }>;
+  );
 
   if (!locked) return null;
   return runBootstrap(em, creds);

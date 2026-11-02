@@ -60,6 +60,9 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  console.error('\n❌ Bootstrap yiqildi:', err instanceof Error ? err.message : err);
+  console.error(
+    '\n❌ Bootstrap yiqildi:',
+    err instanceof Error ? err.message : err,
+  );
   process.exitCode = 1;
 });

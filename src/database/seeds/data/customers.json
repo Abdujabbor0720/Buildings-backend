@@ -1,10 +1,130 @@
 [
-  { "name": "Andijon viloyati hokimligi", "type": "Davlat organi", "inn": "201456789", "head": "Jahongir Karimov", "phone": "+998742234501", "address": "Andijon sh., Navoiy shoh ko‘chasi 1-uy" },
-  { "name": "Viloyat xalq ta’limi boshqarmasi", "type": "Davlat organi", "inn": "201456790", "head": "Dilnoza Rahimova", "phone": "+998742234512", "address": "Andijon sh., Bobur ko‘chasi 24-uy" },
-  { "name": "Viloyat sog‘liqni saqlash boshqarmasi", "type": "Davlat organi", "inn": "201456791", "head": "Alisher Tursunov", "phone": "+998742234523", "address": "Andijon sh., Amir Temur ko‘chasi 8-uy" },
-  { "name": "“O‘zavtoyo‘l” AJ Andijon filiali", "type": "Davlat korxonasi", "inn": "201456792", "head": "Ravshan Qodirov", "phone": "+998742234534", "address": "Andijon sh., Yo‘lchi ko‘chasi 44-uy" },
-  { "name": "Viloyat kommunal xizmat ko‘rsatish boshqarmasi", "type": "Davlat organi", "inn": "201456793", "head": "Nodira Yusupova", "phone": "+998742234545", "address": "Andijon sh., Mustaqillik ko‘chasi 17-uy" },
-  { "name": "“Andijon invest” direksiyasi", "type": "Davlat korxonasi", "inn": "201456794", "head": "Sardor Ismoilov", "phone": "+998742234556", "address": "Andijon sh., Cho‘lpon ko‘chasi 3-uy" },
-  { "name": "Viloyat madaniyat boshqarmasi", "type": "Davlat organi", "inn": "201456795", "head": "Gulnora Abdullayeva", "phone": "+998742234567", "address": "Andijon sh., Fitrat ko‘chasi 12-uy" },
-  { "name": "Viloyat jismoniy tarbiya va sport boshqarmasi", "type": "Davlat organi", "inn": "201456796", "head": "Bekzod Nazarov", "phone": "+998742234578", "address": "Andijon sh., Sportchilar ko‘chasi 5-uy" }
+  {
+    "name": "Andijon viloyati hokimligi",
+    "type": "Davlat organi",
+    "inn": "201456789",
+    "head": "Jahongir Karimov",
+    "phone": "+998742234501",
+    "address": "Andijon sh., Navoiy shoh ko‘chasi 1-uy"
+  },
+  {
+    "name": "Viloyat xalq ta’limi boshqarmasi",
+    "type": "Davlat organi",
+    "inn": "201456790",
+    "head": "Dilnoza Rahimova",
+    "phone": "+998742234512",
+    "address": "Andijon sh., Bobur ko‘chasi 24-uy"
+  },
+  {
+    "name": "Viloyat sog‘liqni saqlash boshqarmasi",
+    "type": "Davlat organi",
+    "inn": "201456791",
+    "head": "Alisher Tursunov",
+    "phone": "+998742234523",
+    "address": "Andijon sh., Amir Temur ko‘chasi 8-uy"
+  },
+  {
+    "name": "“O‘zavtoyo‘l” AJ Andijon filiali",
+    "type": "Davlat korxonasi",
+    "inn": "201456792",
+    "head": "Ravshan Qodirov",
+    "phone": "+998742234534",
+    "address": "Andijon sh., Yo‘lchi ko‘chasi 44-uy"
+  },
+  {
+    "name": "Viloyat kommunal xizmat ko‘rsatish boshqarmasi",
+    "type": "Davlat organi",
+    "inn": "201456793",
+    "head": "Nodira Yusupova",
+    "phone": "+998742234545",
+    "address": "Andijon sh., Mustaqillik ko‘chasi 17-uy"
+  },
+  {
+    "name": "“Andijon invest” direksiyasi",
+    "type": "Davlat korxonasi",
+    "inn": "201456794",
+    "head": "Sardor Ismoilov",
+    "phone": "+998742234556",
+    "address": "Andijon sh., Cho‘lpon ko‘chasi 3-uy"
+  },
+  {
+    "name": "Viloyat madaniyat boshqarmasi",
+    "type": "Davlat organi",
+    "inn": "201456795",
+    "head": "Gulnora Abdullayeva",
+    "phone": "+998742234567",
+    "address": "Andijon sh., Fitrat ko‘chasi 12-uy"
+  },
+  {
+    "name": "Viloyat jismoniy tarbiya va sport boshqarmasi",
+    "type": "Davlat organi",
+    "inn": "201456796",
+    "head": "Bekzod Nazarov",
+    "phone": "+998742234578",
+    "address": "Andijon sh., Sportchilar ko‘chasi 5-uy"
+  },
+  {
+    "name": "Viloyat sog‘liqni saqlash boshqarmasi",
+    "type": "Davlat organi",
+    "inn": "201456798",
+    "head": "Nilufar Qodirova",
+    "phone": "+998742234523",
+    "address": "Andijon sh., Mashrab ko‘chasi 8-uy"
+  },
+  {
+    "name": "Viloyat avtomobil yo‘llari boshqarmasi",
+    "type": "Davlat organi",
+    "inn": "201456799",
+    "head": "Shuhrat Oripov",
+    "phone": "+998742234534",
+    "address": "Andijon sh., Yo‘lchi ko‘chasi 15-uy"
+  },
+  {
+    "name": "Viloyat suv ta’minoti boshqarmasi",
+    "type": "Davlat organi",
+    "inn": "201456800",
+    "head": "Jasur Hamidov",
+    "phone": "+998742234545",
+    "address": "Andijon sh., Suvchi ko‘chasi 3-uy"
+  },
+  {
+    "name": "Viloyat madaniyat boshqarmasi",
+    "type": "Davlat organi",
+    "inn": "201456801",
+    "head": "Zulfiya Ergasheva",
+    "phone": "+998742234556",
+    "address": "Andijon sh., Navoiy shoh ko‘chasi 40-uy"
+  },
+  {
+    "name": "Viloyat jismoniy tarbiya va sport boshqarmasi",
+    "type": "Davlat organi",
+    "inn": "201456802",
+    "head": "Davron Mamadaliyev",
+    "phone": "+998742234567",
+    "address": "Andijon sh., Stadion ko‘chasi 2-uy"
+  },
+  {
+    "name": "“Andijon Invest” AJ",
+    "type": "Davlat ulushli korxona",
+    "inn": "201456803",
+    "head": "Komil Rashidov",
+    "phone": "+998742234578",
+    "address": "Andijon sh., Bobur ko‘chasi 71-uy"
+  },
+  {
+    "name": "Viloyat maktabgacha ta’lim boshqarmasi",
+    "type": "Davlat organi",
+    "inn": "201456804",
+    "head": "Mavluda Yusupova",
+    "phone": "+998742234589",
+    "address": "Andijon sh., Gulbog‘ ko‘chasi 12-uy"
+  },
+  {
+    "name": "Viloyat qurilish boshqarmasi",
+    "type": "Davlat organi",
+    "inn": "201456805",
+    "head": "Alisher Tursunov",
+    "phone": "+998742234590",
+    "address": "Andijon sh., Sanoat ko‘chasi 1-uy"
+  }
 ]

@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DataSource, EntityManager } from 'typeorm';
 import { AppDataSource } from '../../config/data-source';
-import { envAdminCredentials, upsertEnvAdmin } from '../bootstrap/bootstrap.helpers';
+import {
+  envAdminCredentials,
+  upsertEnvAdmin,
+} from '../bootstrap/bootstrap.helpers';
 import { SeedStorage } from './seed-storage';
 import {
   AiAnalysisType,
@@ -26,6 +29,7 @@ import {
 import {
   addDays,
   diffInDays,
+  formatDateUz,
   tashkentToday,
   toDateKey,
 } from '../../helpers/date.helpers';
@@ -586,14 +590,16 @@ async function seedProgressHistory(
     const spec = specs[index];
     if (spec.progressPercent <= 0) return;
 
-    // Oxirgi 10 oy, oyiga bitta yozuv. ⚠️ Oxirgi yozuv AYNAN obyektdagi
-    // foizga teng bo‘lishi shart: aks holda grafikdagi oxirgi nuqta
-    // kartadagi raqamdan farq qilib qolardi.
-    const points = rng.int(5, 10);
+    // ⚠️ Oxirgi yozuv AYNAN obyektdagi foizga teng bo‘lishi shart: aks
+    // holda grafikdagi oxirgi nuqta kartadagi raqamdan farq qilib
+    // qolardi.
+    // Qadam 28 kun emas, 18 kun: namoyish uchun grafikda egri chiziq
+    // ko‘rinishi kerak, beshta nuqta esa siniq chiziq bo‘lib qolardi.
+    const points = rng.int(10, 18);
     let previous = 0;
 
     for (let i = points; i >= 1; i -= 1) {
-      const reportDate = addDays(today, -(i * 28 + rng.int(0, 6)));
+      const reportDate = addDays(today, -(i * 18 + rng.int(0, 5)));
       if (reportDate < new Date(`${spec.plannedStartDate}T00:00:00Z`)) continue;
 
       const ratio = (points - i + 1) / points;
@@ -1042,8 +1048,19 @@ async function seedPhotoReports(
 
   // ⚠️ Suratlar DISKKA emas, obyekt xotirasiga (DigitalOcean Spaces)
   // yoziladi — ilovada lokal `uploads/` papkasi umuman yo‘q.
-  const seedStorage = new SeedStorage();
-  const removed = await seedStorage.clearSeedObjects();
+  //
+  // `SEED_SKIP_UPLOADS=1` — Spaces kalitlari yo‘q muhit uchun (lokal
+  // ishlab chiqish, CI). Foto-hisobot QATORLARI baribir yoziladi,
+  // faqat suratsiz: busiz butun seed Spaces ulanmagani uchun yiqilib,
+  // qolgan 20 ta jadval ham bo‘sh qolardi.
+  const skipUploads = process.env.SEED_SKIP_UPLOADS === '1';
+  const seedStorage = skipUploads ? null : new SeedStorage();
+  if (skipUploads) {
+    console.log(
+      '  ⚠️  SEED_SKIP_UPLOADS=1 — suratlar yuklanmaydi (faqat qatorlar)',
+    );
+  }
+  const removed = seedStorage ? await seedStorage.clearSeedObjects() : 0;
   if (removed > 0) {
     console.log(`  🧹 Avvalgi seed suratlari o‘chirildi: ${removed} ta`);
   }
@@ -1087,8 +1104,17 @@ async function seedPhotoReports(
       em.create(PhotoReport, {
         objectId: object.id,
         capturedAt,
+        // ⚠️ Har 22-hisobot obyektdan UZOQDA olingan (5–40 km).
+        // Busiz tekshiruv dvigateli hech qachon muammo topmasdi va
+        // «AI tekshiruvi» xususiyati namoyishda ishlamayotgandek
+        // ko‘rinardi: 647 ta hisobotning HAMMASI «tasdiqlandi» edi.
         lat: Number(
-          ((object.lat ?? 0) + rng.float(-0.0008, 0.0008, 6)).toFixed(6),
+          (
+            (object.lat ?? 0) +
+            (rng.bool(1 / 22)
+              ? rng.float(0.05, 0.36, 6)
+              : rng.float(-0.0008, 0.0008, 6))
+          ).toFixed(6),
         ),
         lng: Number(
           ((object.lng ?? 0) + rng.float(-0.0008, 0.0008, 6)).toFixed(6),
@@ -1133,18 +1159,15 @@ async function seedPhotoReports(
   // 2) Qolgan faol obyektlar uchun tarix.
   const active = objects.filter((o) => o.status === ObjectStatus.IN_PROGRESS);
   for (const object of active) {
-    if (
-      byKey.size &&
-      [...byKey.values()].some((o) => o.id === object.id) &&
-      rng.bool(0.5)
-    )
-      continue;
-    const count = rng.int(1, 3);
+    // ⚠️ Maketdagi nomli hisobotga ega obyekt ham tarixdan CHETDA
+    // QOLMAYDI: ilgari ular yarmida o‘tkazib yuborilardi va aynan
+    // bosh sahifada ko‘rinadigan obyektning tarixi bo‘sh chiqardi.
+    const count = rng.int(2, 5);
     for (let i = 0; i < count; i += 1) {
       // ⚠️ Kamida 5 kun oldin: maketdagi uchta nomli hisobot (29/28/27-oktabr)
       // «So‘nggi foto-hisobotlar» ro‘yxatining boshida turishi kerak.
       // Vaqt ham qo‘shiladi — yarim tun soxta ko‘rinadi, surat ish vaqtida olinadi.
-      const daysAgo = 5 + i * rng.int(16, 38) + rng.int(0, 9);
+      const daysAgo = 5 + i * rng.int(12, 26) + rng.int(0, 7);
       const capturedAt = addDays(today, -daysAgo);
       capturedAt.setUTCHours(rng.int(4, 13), rng.int(0, 59), 0, 0);
       const progress = clampPercent(
@@ -1155,68 +1178,108 @@ async function seedPhotoReports(
         capturedAt,
         progress,
         PHOTO_NOTES[rng.int(0, PHOTO_NOTES.length - 1)],
-        rng.int(1, 3),
+        rng.int(2, 3),
       );
     }
   }
 
-  console.log(
-    `  ☁️  Spaces'ga yuklanmoqda: ${pendingUploads.length} ta surat…`,
-  );
-  const uploaded = await seedStorage.putMany(
-    pendingUploads,
-    (item) => ({ body: item.png, contentType: 'image/png', ext: '.png' }),
-    12,
-    (done, total) => {
-      if (done < total) process.stdout.write(`\r     ${done}/${total}`);
-      else process.stdout.write(`\r     ${total}/${total} ✓\n`);
-    },
-  );
+  const totalMb = (
+    pendingUploads.reduce((sum, item) => sum + item.png.length, 0) /
+    1024 /
+    1024
+  ).toFixed(1);
 
-  const files: StoredFile[] = pendingUploads.map((item, index) =>
-    em.create(StoredFile, {
-      originalName: item.originalName,
-      storedName: uploaded[index].key.split('/').pop()!,
-      mimeType: 'image/png',
-      size: String(uploaded[index].size),
-      path: uploaded[index].key,
-      url: uploaded[index].url,
-      uploadedById: item.authorId,
-    }),
-  );
+  // ⚠️ `savedReports` IKKALA yo‘lda ham kerak: pastdagi tekshiruv va
+  // moderatsiya bloki AYNI shu ro‘yxat ustida ishlaydi. Suratsiz yo‘l
+  // bu yerda `return` qilsa, hamma hisobot `pending` bo‘lib qolardi va
+  // lokal muhit prod'dan boshqacha ko‘rinardi.
+  let savedReports: PhotoReport[];
 
-  const savedFiles = await em.save(files, { chunk: 300 });
-  const savedReports = await em.save(reports, { chunk: 300 });
+  if (!seedStorage) {
+    savedReports = await em.save(reports, { chunk: 300 });
+    console.log(
+      `  ⚠️  ${pendingUploads.length} ta surat (${totalMb} MB) yuklanmadi — ` +
+        'hisobotlar suratsiz',
+    );
+  } else {
+    console.log(
+      `  ☁️  Spaces'ga yuklanmoqda: ${pendingUploads.length} ta surat (${totalMb} MB)…`,
+    );
+    const uploaded = await seedStorage.putMany(
+      pendingUploads,
+      (item) => ({ body: item.png, contentType: 'image/png', ext: '.png' }),
+      12,
+      (done, total) => {
+        if (done < total) process.stdout.write(`\r     ${done}/${total}`);
+        else process.stdout.write(`\r     ${total}/${total} ✓\n`);
+      },
+    );
 
-  await em.save(
-    images.map((img) =>
-      em.create(PhotoReportImage, {
-        reportId: savedReports[img.reportIndex].id,
-        fileId: savedFiles[img.fileIndex].id,
-        url: savedFiles[img.fileIndex].url,
-        sortOrder: img.order,
+    const files: StoredFile[] = pendingUploads.map((item, index) =>
+      em.create(StoredFile, {
+        originalName: item.originalName,
+        storedName: uploaded[index].key.split('/').pop()!,
+        mimeType: 'image/png',
+        size: String(uploaded[index].size),
+        path: uploaded[index].key,
+        url: uploaded[index].url,
+        uploadedById: item.authorId,
       }),
-    ),
-    { chunk: 500 },
-  );
+    );
+
+    const savedFiles = await em.save(files, { chunk: 300 });
+    savedReports = await em.save(reports, { chunk: 300 });
+
+    await em.save(
+      images.map((img) =>
+        em.create(PhotoReportImage, {
+          reportId: savedReports[img.reportIndex].id,
+          fileId: savedFiles[img.fileIndex].id,
+          url: savedFiles[img.fileIndex].url,
+          sortOrder: img.order,
+        }),
+      ),
+      { chunk: 500 },
+    );
+  }
 
   // 3) Tekshiruv va moderatsiya — haqiqiy dvigatel orqali.
   for (const report of savedReports) {
     const object = objects.find((o) => o.id === report.objectId)!;
+    // ⚠️ Kirish ma’lumoti ATAYLAB bir xil emas: aks holda dvigatel
+    // har safar bir xil «tasdiqlandi» javobini berardi va hisobotlar
+    // ro‘yxatida bitta ham shubhali qator bo‘lmasdi.
+    //   • har 12-hisobot KECH yuklangan (5–22 kun)
+    //   • har 18-hisobotda foiz sakrashi haqiqatga to‘g‘ri kelmaydi
+    const lateUpload = rng.bool(1 / 12);
+    const impossibleJump = rng.bool(1 / 18);
     const verification = verifyPhotoReport({
       capturedAt: report.capturedAt,
-      uploadedAt: addDays(report.capturedAt, rng.int(0, 2)),
+      uploadedAt: addDays(
+        report.capturedAt,
+        lateUpload ? rng.int(5, 22) : rng.int(0, 2),
+      ),
       photoLat: report.lat,
       photoLng: report.lng,
       objectLat: object.lat,
       objectLng: object.lng,
       reportedProgress: report.progressPercent,
-      previousProgress: Math.max(0, report.progressPercent - rng.float(2, 8)),
-      daysSincePrevious: rng.int(20, 45),
+      previousProgress: Math.max(
+        0,
+        report.progressPercent -
+          (impossibleJump ? rng.float(18, 34) : rng.float(2, 8)),
+      ),
+      daysSincePrevious: impossibleJump ? rng.int(3, 7) : rng.int(20, 45),
     });
 
-    const approved =
-      verification.verdict !== AiVerdict.REJECTED && rng.bool(0.85);
+    // ⚠️ Moderator qarori AI hukmidan KELIB CHIQADI, lekin unga TENG
+    // EMAS: odam shubhali hisobotni ko‘rib tasdiqlashi ham, rad etishi
+    // ham mumkin. Ilgari rad etilgan hisobot `pending` bo‘lib qolardi
+    // va «Rad etilgan» filtri namoyishda HAR DOIM bo‘sh chiqardi.
+    const rejected =
+      verification.verdict === AiVerdict.REJECTED ||
+      (verification.verdict === AiVerdict.SUSPICIOUS && rng.bool(0.3));
+    const approved = !rejected && rng.bool(0.85);
     await em.update(
       PhotoReport,
       { id: report.id },
@@ -1254,16 +1317,22 @@ async function seedPhotoReports(
         },
         status: approved
           ? PhotoReportStatus.APPROVED
-          : PhotoReportStatus.PENDING,
+          : rejected
+            ? PhotoReportStatus.REJECTED
+            : PhotoReportStatus.PENDING,
+        rejectReason: rejected ? verification.comment : null,
         reviewedById:
-          approved && moderators.length ? rng.pick(moderators).id : null,
-        reviewedAt: approved ? addDays(report.capturedAt, 1) : null,
+          (approved || rejected) && moderators.length
+            ? rng.pick(moderators).id
+            : null,
+        reviewedAt: approved || rejected ? addDays(report.capturedAt, 1) : null,
       },
     );
   }
 
   console.log(
-    `📷 ${savedReports.length} ta foto-hisobot, ${savedFiles.length} ta surat yaratildi`,
+    `📷 ${savedReports.length} ta foto-hisobot, ` +
+      `${seedStorage ? pendingUploads.length : 0} ta surat yaratildi`,
   );
 }
 
@@ -1332,7 +1401,7 @@ async function seedDocuments(
 
   for (const object of objects) {
     const count =
-      object.status === ObjectStatus.NOT_STARTED ? 2 : rng.int(3, 6);
+      object.status === ObjectStatus.NOT_STARTED ? 3 : rng.int(5, 10);
     for (let i = 0; i < count; i += 1) {
       const template = templates[i % templates.length];
       const issued = addDays(
@@ -1451,22 +1520,31 @@ async function seedNotifications(
   );
   if (recipients.length === 0) return;
 
-  const rows: Notification[] = [];
+  const rows: Array<{ row: Notification; daysAgo: number }> = [];
+  const push = (row: Notification, daysAgo: number) =>
+    rows.push({ row, daysAgo });
+
   const atRisk = objects
     .filter((o) => o.healthStatus === ObjectHealth.AT_RISK)
-    .slice(0, 6);
+    .slice(0, 12);
+  const delayed = objects
+    .filter((o) => o.healthStatus === ObjectHealth.DELAYED)
+    .slice(0, 14);
   const dueSoon = objects
     .filter(
       (o) =>
         o.status === ObjectStatus.IN_PROGRESS &&
-        (diffInDays(toDateKey(today), o.plannedEndDate) ?? 999) <= 30 &&
+        (diffInDays(toDateKey(today), o.plannedEndDate) ?? 999) <= 60 &&
         o.progressPercent < 95,
     )
-    .slice(0, 6);
+    .slice(0, 12);
+  const fresh = objects
+    .filter((o) => o.status === ObjectStatus.IN_PROGRESS)
+    .slice(0, 18);
 
   for (const user of recipients) {
-    for (const object of atRisk) {
-      rows.push(
+    atRisk.forEach((object, i) =>
+      push(
         em.create(Notification, {
           userId: user.id,
           type: NotificationType.RISK_DETECTED,
@@ -1476,25 +1554,133 @@ async function seedNotifications(
           objectId: object.id,
           isRead: false,
         }),
-      );
-    }
-    for (const object of dueSoon) {
-      rows.push(
+        i % 9,
+      ),
+    );
+
+    delayed.forEach((object, i) =>
+      push(
+        em.create(Notification, {
+          userId: user.id,
+          type: NotificationType.OBJECT_DELAYED,
+          severity: NotificationSeverity.WARNING,
+          title: 'Obyekt rejadan ortda qoldi',
+          body: `«${object.name}» bo‘yicha ${object.delayDays} kunlik kechikish qayd etildi. Pudratchidan tushuntirish talab qilinsin.`,
+          objectId: object.id,
+          isRead: i % 3 === 0,
+        }),
+        2 + (i % 16),
+      ),
+    );
+
+    dueSoon.forEach((object, i) =>
+      push(
         em.create(Notification, {
           userId: user.id,
           type: NotificationType.DEADLINE_APPROACHING,
           severity: NotificationSeverity.WARNING,
           title: 'Topshirish muddati yaqinlashmoqda',
-          body: `«${object.name}» yaqin kunlarda topshirilishi kerak, bajarilish ${object.progressPercent}%.`,
+          body: `«${object.name}» ${formatDateUz(object.plannedEndDate, { utc: true })} da topshirilishi kerak, bajarilish ${object.progressPercent}%.`,
           objectId: object.id,
-          isRead: false,
+          isRead: i % 4 === 0,
         }),
-      );
-    }
+        1 + (i % 12),
+      ),
+    );
+
+    fresh.forEach((object, i) =>
+      push(
+        em.create(Notification, {
+          userId: user.id,
+          type: NotificationType.PHOTO_REPORT_SUBMITTED,
+          severity: NotificationSeverity.INFO,
+          title: 'Yangi foto-hisobot',
+          body: `«${object.name}» bo‘yicha foto-hisobot yuborildi va AI tekshiruvidan o‘tkazildi.`,
+          objectId: object.id,
+          isRead: i % 2 === 0,
+        }),
+        1 + (i % 20),
+      ),
+    );
+
+    delayed.slice(0, 6).forEach((object, i) =>
+      push(
+        em.create(Notification, {
+          userId: user.id,
+          type: NotificationType.FUNDING_DELAYED,
+          severity: NotificationSeverity.WARNING,
+          title: 'Moliyalashtirish kechikmoqda',
+          body: `«${object.name}» bo‘yicha navbatdagi to‘lov hali o‘tkazilmadi.`,
+          objectId: object.id,
+          isRead: i % 2 === 1,
+        }),
+        4 + (i % 18),
+      ),
+    );
+
+    fresh.slice(0, 5).forEach((object, i) =>
+      push(
+        em.create(Notification, {
+          userId: user.id,
+          type: NotificationType.DOCUMENT_EXPIRING,
+          severity: NotificationSeverity.INFO,
+          title: 'Hujjat muddati tugamoqda',
+          body: `«${object.name}» hujjatlaridan birining amal qilish muddati yaqin oyda tugaydi.`,
+          objectId: object.id,
+          isRead: i % 2 === 0,
+        }),
+        6 + (i % 21),
+      ),
+    );
+
+    push(
+      em.create(Notification, {
+        userId: user.id,
+        type: NotificationType.SYSTEM,
+        severity: NotificationSeverity.INFO,
+        title: 'Haftalik hisobot tayyor',
+        body: 'O‘tgan hafta bo‘yicha qurilish obyektlari holati haqidagi hisobot shakllantirildi.',
+        objectId: null,
+        isRead: true,
+      }),
+      7,
+    );
   }
 
-  await em.save(rows, { chunk: 300 });
-  console.log(`🔔 ${rows.length} ta bildirishnoma qo‘shildi`);
+  const saved = await em.save(
+    rows.map((r) => r.row),
+    { chunk: 300 },
+  );
+
+  // ⚠️ `createdAt` — `@CreateDateColumn`: TypeORM uni INSERT paytida
+  // o‘zi yozadi va berilgan qiymatni e’tiborsiz qoldiradi. Shuning
+  // uchun sanalar keyin RAW so‘rov bilan surib qo‘yiladi — busiz
+  // hammasi bir soniyada kelgan bo‘lib ko‘rinardi va bildirishnoma
+  // ro‘yxati «soxta» taassurot berardi (ro‘yxat `createdAt` bo‘yicha
+  // saralanadi).
+  const byDays = new Map<number, string[]>();
+  saved.forEach((row, index) => {
+    const days = rows[index].daysAgo;
+    const list = byDays.get(days) ?? [];
+    list.push(row.id);
+    byDays.set(days, list);
+  });
+  for (const [days, ids] of byDays) {
+    await em.query(
+      `UPDATE notifications
+          SET created_at = now() - ($1 || ' days')::interval - (random() * interval '9 hours'),
+              read_at = CASE WHEN is_read
+                             THEN now() - ($1 || ' days')::interval + interval '2 hours'
+                             ELSE NULL END
+        WHERE id = ANY($2::uuid[])`,
+      [String(days), ids],
+    );
+  }
+
+  const unread = saved.filter((r) => !r.isRead).length;
+  console.log(
+    `🔔 ${saved.length} ta bildirishnoma qo‘shildi (${unread} tasi o‘qilmagan)`,
+  );
 }
 
 /* ───────────────────────── 15. Sozlamalar ───────────────────────── */
