@@ -28,6 +28,7 @@
     "migration:show": "npm run typeorm -- migration:show",
     "schema:drop": "npm run typeorm -- schema:drop",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
+    "bootstrap": "ts-node -r tsconfig-paths/register src/database/bootstrap/run-bootstrap.ts",
     "db:reset": "npm run schema:drop && npm run migration:run && npm run seed",
     "db:setup": "bash scripts/setup-db.sh"
   },
