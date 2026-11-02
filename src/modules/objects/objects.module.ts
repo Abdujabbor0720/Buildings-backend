@@ -6,6 +6,7 @@ import { ObjectDelay } from '../../database/entities/object-delay.entity';
 import { ObjectMilestone } from '../../database/entities/object-milestone.entity';
 import { ObjectProgressUpdate } from '../../database/entities/object-progress-update.entity';
 import { Region } from '../../database/entities/region.entity';
+import { ObjectImportService } from './import/object-import.service';
 import { MilestonesController } from './milestones.controller';
 import { MilestonesService } from './milestones.service';
 import { ObjectHealthService } from './object-health.service';
@@ -27,6 +28,7 @@ import { ObjectsService } from './objects.service';
   controllers: [ObjectsController, MilestonesController],
   providers: [
     ObjectsService,
+    ObjectImportService,
     ObjectHealthService,
     MilestonesService,
     ObjectsCron,
