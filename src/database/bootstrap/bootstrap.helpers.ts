@@ -1,5 +1,5 @@
 import { hash } from 'bcryptjs';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { EntityManager } from 'typeorm';
 import { UserRole } from '../../common/constants/enums';
@@ -28,9 +28,41 @@ import { User } from '../entities/user.entity';
  * necha marta chaqirish mumkin.
  */
 
-const DATA_DIR = join(__dirname, '..', 'seeds', 'data');
+/**
+ * ⚠️ MA'LUMOT FAYLLARI `dist` GA O'ZI KO'CHMAYDI.
+ *
+ * `nest build` faqat `.ts` → `.js` qiladi; `.json` va `.geojson` fayllar
+ * ortda qoladi. Prod'da ilova `dist/main.js` dan ishlagani uchun
+ * `__dirname` = `dist/database/bootstrap` bo'ladi va yo'l mavjud bo'lmagan
+ * `dist/database/seeds/data` ga ishora qilardi — bootstrap birinchi
+ * qadamda ENOENT bilan yiqilib, admin ham yozilmay qolgan edi.
+ *
+ * Asosiy yechim — `nest-cli.json` dagi `assets`. Bu ro'yxat esa ZAXIRA:
+ * kimdir o'sha sozlamani olib tashlasa yoki boshqa yig'uvchiga o'tilsa,
+ * xato «ishga tushdi, lekin jim ishlamadi» ko'rinishida emas, balki
+ * umuman bo'lmaydi. ts-node (CLI) birinchi yo'lni, `dist` ikkinchisini
+ * topadi.
+ */
+const DATA_DIR_CANDIDATES = [
+  join(__dirname, '..', 'seeds', 'data'),
+  join(process.cwd(), 'dist', 'database', 'seeds', 'data'),
+  join(process.cwd(), 'src', 'database', 'seeds', 'data'),
+];
+
+function dataDir(): string {
+  const found = DATA_DIR_CANDIDATES.find((d) => existsSync(d));
+  if (!found) {
+    throw new Error(
+      'Boshlang\'ich ma\'lumot papkasi topilmadi. Qaralgan joylar: ' +
+        DATA_DIR_CANDIDATES.join(', ') +
+        '. `nest-cli.json` dagi `assets` sozlamasi o\'chirilgan bo\'lishi mumkin.',
+    );
+  }
+  return found;
+}
+
 const readJson = <T>(file: string): T =>
-  JSON.parse(readFileSync(join(DATA_DIR, file), 'utf8')) as T;
+  JSON.parse(readFileSync(join(dataDir(), file), 'utf8')) as T;
 
 interface GeoFeature {
   properties: {
