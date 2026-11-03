@@ -5,7 +5,11 @@ import { District } from '../../database/entities/district.entity';
 import { ObjectDelay } from '../../database/entities/object-delay.entity';
 import { ObjectMilestone } from '../../database/entities/object-milestone.entity';
 import { ObjectProgressUpdate } from '../../database/entities/object-progress-update.entity';
+import { PhotoReport } from '../../database/entities/photo-report.entity';
+import { PhotoReportImage } from '../../database/entities/photo-report-image.entity';
 import { Region } from '../../database/entities/region.entity';
+import { StoredFile } from '../../database/entities/stored-file.entity';
+import { AiModule } from '../ai/ai.module';
 import { ObjectImportService } from './import/object-import.service';
 import { MilestonesController } from './milestones.controller';
 import { MilestonesService } from './milestones.service';
@@ -23,7 +27,20 @@ import { ObjectsService } from './objects.service';
       ObjectProgressUpdate,
       ObjectMilestone,
       ObjectDelay,
+      // Bosqichni topshirish foto-hisobot yozadi — `photo-report.factory`
+      // shu jadvallarga `EntityManager` orqali tegadi.
+      PhotoReport,
+      PhotoReportImage,
+      StoredFile,
     ]),
+    /*
+     * ⚠️ HALQA YO‘Q: `AiModule` hech kimni import qilmaydi, shuning uchun
+     * `ObjectsModule → AiModule` xavfsiz. Teskarisi (`AiModule →
+     * ObjectsModule`) esa `PhotoReportsModule` orqali halqa hosil
+     * qilardi — yangi bog‘lanish qo‘shishdan oldin shu yo‘nalishni
+     * tekshiring.
+     */
+    AiModule,
   ],
   controllers: [ObjectsController, MilestonesController],
   providers: [

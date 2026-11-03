@@ -15,6 +15,7 @@ import {
 } from '../../common/constants/enums';
 import { decimalTransformer } from '../transformers';
 import { ConstructionObject } from './construction-object.entity';
+import { ObjectMilestone } from './object-milestone.entity';
 import { PhotoReportImage } from './photo-report-image.entity';
 import type { PhotoVisionAnalysis } from '../../common/contracts/photo-vision.contract';
 import { User } from './user.entity';
@@ -43,6 +44,40 @@ export class PhotoReport extends BaseEntity {
   })
   @JoinColumn({ name: 'object_id' })
   object!: ConstructionObject;
+
+  /**
+   * QAYSI BOSQICH topshirilgani. `null` — oddiy davriy foto-hisobot.
+   *
+   * ⚠️ `objectId` O‘RNIGA EMAS, USTIGA: bosqich o‘chirilsa ham hisobot
+   * obyektda qolishi kerak (`SET NULL`), aks holda tasdiqlangan surat
+   * arxivdan jimgina yo‘qolardi.
+   */
+  @Index()
+  @Column('uuid', { nullable: true, name: 'milestone_id' })
+  milestoneId!: string | null;
+
+  @ManyToOne(() => ObjectMilestone, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'milestone_id' })
+  milestone!: ObjectMilestone | null;
+
+  /**
+   * Bosqich topshirilganda — SHU BOSQICHNING bajarilishi, %.
+   *
+   * ⚠️ `progressPercent` dan ALOHIDA ustun: u OBYEKTNING natijaviy
+   * bajarilishini saqlaydi (moderator tasdiqlaganda aynan shu qiymat
+   * qo‘llanadi), bu esa bosqichning o‘zinikini. Bitta ustunga yig‘ilsa,
+   * «poydevor 100%» hisoboti tasdiqlanganda obyekt ham 100% bo‘lib
+   * qolardi.
+   */
+  @ApiProperty({ example: 100, nullable: true })
+  @Column('numeric', {
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    name: 'milestone_percent',
+    transformer: decimalTransformer,
+  })
+  milestonePercent!: number | null;
 
   @ApiProperty({ description: 'Surat olingan vaqt (yuklangan vaqt EMAS)' })
   @Column({ type: 'timestamptz', name: 'captured_at' })

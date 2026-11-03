@@ -123,8 +123,14 @@ export class ObjectsService {
     }
   }
 
-  /** Yozish amallari uchun — o‘qish doirasi bilan AYNI qoida. */
-  private assertCanWrite(object: ConstructionObject, user: AuthUser): void {
+  /**
+   * Yozish amallari uchun — o‘qish doirasi bilan AYNI qoida.
+   *
+   * ⚠️ OCHIQ (public): bosqichni topshirish (`MilestonesService`) ham
+   * aynan shu tekshiruvdan o‘tadi. Nusxa ko‘chirilsa, bitta yo‘lda
+   * pudratchi boshqa tumandagi bosqichni topshira olardi.
+   */
+  assertCanWrite(object: ConstructionObject, user: AuthUser): void {
     if (
       user.role === UserRole.SUPER_ADMIN ||
       user.role === UserRole.REGION_ADMIN

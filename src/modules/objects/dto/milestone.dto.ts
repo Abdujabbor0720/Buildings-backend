@@ -8,6 +8,8 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsLatitude,
+  IsLongitude,
   IsNumber,
   IsOptional,
   IsString,
@@ -79,6 +81,17 @@ export class CreateMilestoneDto {
   @Min(0)
   @IsOptional()
   sortOrder?: number;
+
+  @ApiPropertyOptional({
+    example: 12,
+    description: 'Shu bosqichga biriktirilgan ishchilar soni',
+  })
+  @Transform(toNumber)
+  @IsInt()
+  @Min(0)
+  @Max(10000)
+  @IsOptional()
+  workerCount?: number;
 }
 
 export class UpdateMilestoneDto extends PartialType(CreateMilestoneDto) {}
@@ -124,4 +137,87 @@ export class CalendarQueryDto {
   @IsUUID('4')
   @IsOptional()
   objectId?: string;
+}
+
+/**
+ * BOSQICHNI TOPSHIRISH.
+ *
+ * ⚠️ SURAT MAJBURIY (`ArrayMinSize(1)`) — va bu qoida mijozda emas,
+ * SHU YERDA yashaydi. Topshirish fakt yozadi: «poydevor quyildi» degan
+ * yozuv dalilsiz qolsa, keyinroq uni tekshirib bo‘lmaydi va butun
+ * fotoarxivning mohiyati yo‘qoladi.
+ */
+export class SubmitMilestoneDto {
+  @ApiProperty({
+    type: [String],
+    format: 'uuid',
+    description:
+      'Avval `POST /files/upload-many` orqali yuklangan fayl id lari',
+  })
+  @IsArray()
+  @ArrayMinSize(1, {
+    message: 'Topshirish uchun kamida bitta surat biriktirilishi shart',
+  })
+  @ArrayMaxSize(10, {
+    message: 'Bir topshiruvga 10 tadan ko‘p surat biriktirib bo‘lmaydi',
+  })
+  @IsUUID('4', { each: true })
+  fileIds!: string[];
+
+  @ApiPropertyOptional({
+    example: 100,
+    description:
+      'Bosqichning bajarilishi, %. Berilmasa — 100 (to‘liq topshirildi)',
+  })
+  @Transform(toNumber)
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  @IsOptional()
+  progressPercent?: number;
+
+  @ApiPropertyOptional({ description: 'Qanday ishlar bajarildi' })
+  @Transform(trim)
+  @IsString()
+  @MaxLength(2000)
+  @IsOptional()
+  note?: string;
+
+  @ApiPropertyOptional({
+    description: 'Surat olingan vaqt (EXIF). Berilmasa — hozir.',
+  })
+  @IsDateString()
+  @IsOptional()
+  capturedAt?: string;
+
+  @ApiPropertyOptional()
+  @Transform(toNumber)
+  @IsLatitude()
+  @IsOptional()
+  lat?: number;
+
+  @ApiPropertyOptional()
+  @Transform(toNumber)
+  @IsLongitude()
+  @IsOptional()
+  lng?: number;
+
+  @ApiPropertyOptional({
+    example: 12,
+    description: 'Shu topshiruvda maydonda bo‘lgan ishchilar soni',
+  })
+  @Transform(toNumber)
+  @IsInt()
+  @Min(0)
+  @Max(10000)
+  @IsOptional()
+  workerCount?: number;
+
+  @ApiPropertyOptional({
+    example: '2026-11-03',
+    description: 'Ish aslida qachon tugagani. Berilmasa — bugun.',
+  })
+  @IsDateString()
+  @IsOptional()
+  actualEnd?: string;
 }

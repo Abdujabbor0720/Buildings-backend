@@ -125,6 +125,16 @@ export enum AiAnalysisType {
   PHOTO_CHECK = 'photo_check',
   /** Byudjet og‘ishi */
   BUDGET_DEVIATION = 'budget_deviation',
+  /**
+   * BITTA BOSQICH tahlili — «poydevor quyish 80% bajarildi, umumiy
+   * qurilishga 12% qo‘shdi».
+   *
+   * ⚠️ Qolgan turlardan FARQLI: bu yozuvda `milestoneId` TO‘LDIRILADI.
+   * Obyekt bo‘yicha tahlil oxirgi natijani TUR bo‘yicha oladi; bosqich
+   * tahlili esa har bosqichda alohida bo‘lishi kerak, shuning uchun u
+   * `objectId + type` kesimidan tashqarida saqlanadi.
+   */
+  MILESTONE_PROGRESS = 'milestone_progress',
 }
 
 export enum DocumentType {

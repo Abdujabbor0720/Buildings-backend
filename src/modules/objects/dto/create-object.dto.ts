@@ -106,7 +106,7 @@ export class CreateObjectDto {
   @IsOptional()
   capacity?: number;
 
-  @ApiPropertyOptional({ example: 'o‘quvchi o‘rni' })
+  @ApiPropertyOptional({ example: 'ishchi o‘rni' })
   @Transform(trim)
   @IsString()
   @MaxLength(60)

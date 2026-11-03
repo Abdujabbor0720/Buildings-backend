@@ -4,6 +4,7 @@ import { BaseEntity } from './base.entity';
 import { AiAnalysisType, RiskLevel } from '../../common/constants/enums';
 import { decimalTransformer } from '../transformers';
 import { ConstructionObject } from './construction-object.entity';
+import { ObjectMilestone } from './object-milestone.entity';
 
 /**
  * AI TAHLIL natijasi — «AI tahlil» bo‘limi.
@@ -26,6 +27,22 @@ export class AiAnalysis extends BaseEntity {
   @ManyToOne(() => ConstructionObject, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'object_id' })
   object!: ConstructionObject;
+
+  /**
+   * BOSQICH tahlili bo‘lsa — qaysi bosqich. Obyekt tahlilida `null`.
+   *
+   * ⚠️ Obyekt bo‘yicha oxirgi natijalar `DISTINCT ON (type)` bilan
+   * olinadi; bosqich yozuvlari u ro‘yxatga tushib qolmasligi uchun
+   * `milestone_id IS NULL` sharti bilan FILTRLANADI. Busiz bitta
+   * bosqich tahlili butun obyekt tahlili o‘rniga ko‘rinib qolardi.
+   */
+  @Index()
+  @Column('uuid', { nullable: true, name: 'milestone_id' })
+  milestoneId!: string | null;
+
+  @ManyToOne(() => ObjectMilestone, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'milestone_id' })
+  milestone!: ObjectMilestone | null;
 
   @ApiProperty({ enum: AiAnalysisType })
   @Column({ length: 40 })

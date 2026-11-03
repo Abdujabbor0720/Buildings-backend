@@ -176,8 +176,8 @@ export const COLUMN_SPECS: readonly ColumnSpec[] = [
     key: 'capacityUnit',
     header: 'Quvvat birligi',
     required: false,
-    hint: 'Ixtiyoriy: o‘rin, km, m²…',
-    example: 'o‘quvchi o‘rni',
+    hint: 'Ixtiyoriy: ishchi o‘rni, o‘quvchi o‘rni, km, m²…',
+    example: 'ishchi o‘rni',
     width: 16,
   },
   {

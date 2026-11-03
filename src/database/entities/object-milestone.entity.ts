@@ -4,6 +4,7 @@ import { BaseEntity } from './base.entity';
 import { MilestoneStatus } from '../../common/constants/enums';
 import { decimalTransformer } from '../transformers';
 import { ConstructionObject } from './construction-object.entity';
+import { User } from './user.entity';
 
 /**
  * Qurilish BOSQICHI — «Kalendar (ish rejasi)» bo‘limining asosi.
@@ -74,4 +75,51 @@ export class ObjectMilestone extends BaseEntity {
 
   @Column('smallint', { default: 0, name: 'sort_order' })
   sortOrder!: number;
+
+  /**
+   * SHU BOSQICHGA biriktirilgan ishchilar soni.
+   *
+   * ⚠️ Obyekt darajasida EMAS, bosqich darajasida: poydevorda 12 kishi,
+   * tomni yopishda 5 kishi ishlaydi va «nega sekin ketyapti» degan savolga
+   * javob aynan shu farqdan chiqadi. Obyektga bitta son yozilsa, u o‘rtacha
+   * bo‘lib qolardi va hech narsa tushuntirmasdi.
+   */
+  @ApiProperty({ example: 12, nullable: true })
+  @Column('smallint', { nullable: true, name: 'worker_count' })
+  workerCount!: number | null;
+
+  /* ───────────────────────── Topshirish ───────────────────────── */
+
+  /**
+   * BOSQICH TOPSHIRILGAN VAQT.
+   *
+   * ⚠️ `actualEnd` bilan chalkashmasin: `actualEnd` — ish QACHON tugagani
+   * (odam ko‘rsatadigan sana), bu esa hisobot tizimga QACHON kelgani.
+   * Ikkalasi bir xil bo‘lmaydi — maydondan kelgan hisobot ko‘pincha
+   * ertasi kuni yuklanadi, va «kechikib yuklangan hisobot» aynan shu
+   * ikki qiymat farqidan ko‘rinadi.
+   */
+  @Column({ type: 'timestamptz', nullable: true, name: 'submitted_at' })
+  submittedAt!: Date | null;
+
+  @Column('uuid', { nullable: true, name: 'submitted_by_id' })
+  submittedById!: string | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'submitted_by_id' })
+  submittedBy!: User | null;
+
+  /** Topshirishda yozilgan izoh — oxirgi topshiruvniki. */
+  @Column('text', { nullable: true, name: 'submission_note' })
+  submissionNote!: string | null;
+
+  /**
+   * Shu bosqich bo‘yicha yuborilgan foto-hisobotlar soni.
+   *
+   * ⚠️ ATAYLAB TAKRORLANGAN (denormalizatsiya): ro‘yxatdagi har bosqich
+   * uchun alohida `COUNT(*)` so‘rovi 20 ta bosqichda 20 ta so‘rov
+   * degani. Qiymat faqat `submit()` ichida oshiriladi.
+   */
+  @Column('smallint', { default: 0, name: 'report_count' })
+  reportCount!: number;
 }

@@ -390,7 +390,10 @@ export class ObjectImportService {
         'Kenglik va uzunlik BIRGA to‘ldiriladi yoki ikkalasi ham bo‘sh qoladi',
       );
     } else if (lat === null) {
-      warn('lat', 'Koordinata yo‘q — obyekt xaritada ko‘rinmaydi');
+      warn(
+        'lat',
+        'Koordinata yo‘q — obyekt xaritada ko‘rinmaydi. Keyin obyektni tahrirlab, xaritadan belgilashingiz mumkin',
+      );
     }
 
     /* ── Sonli ixtiyoriylar ── */

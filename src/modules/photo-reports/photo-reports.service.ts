@@ -4,11 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ConstructionObject } from '../../database/entities/construction-object.entity';
 import { PhotoReport } from '../../database/entities/photo-report.entity';
-import { PhotoReportImage } from '../../database/entities/photo-report-image.entity';
-import { StoredFile } from '../../database/entities/stored-file.entity';
 import {
   AiVerdict,
   PhotoReportStatus,
@@ -19,6 +17,7 @@ import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import { AuditService } from '../audit/audit.service';
 import { ObjectsService } from '../objects/objects.service';
 import { PhotoVisionRunner } from '../ai/vision/photo-vision.runner';
+import { createPhotoReportInTx } from './photo-report.factory';
 import { verifyPhotoReport } from './photo-verification.helpers';
 import type {
   CreatePhotoReportDto,
@@ -31,8 +30,6 @@ export class PhotoReportsService {
   constructor(
     @InjectRepository(PhotoReport)
     private readonly reports: Repository<PhotoReport>,
-    @InjectRepository(StoredFile)
-    private readonly files: Repository<StoredFile>,
     @InjectRepository(ConstructionObject)
     private readonly objects: Repository<ConstructionObject>,
     @InjectDataSource() private readonly dataSource: DataSource,
@@ -127,80 +124,24 @@ export class PhotoReportsService {
     const object = await this.objects.findOne({ where: { id: dto.objectId } });
     if (!object) throw new NotFoundException('Obyekt topilmadi');
 
-    const files = await this.files.find({ where: { id: In(dto.fileIds) } });
-    if (files.length !== dto.fileIds.length) {
-      throw new BadRequestException(
-        'Ba’zi fayllar topilmadi — suratlarni qaytadan yuklang',
-      );
-    }
-
-    const now = new Date();
-    const capturedAt = dto.capturedAt ? new Date(dto.capturedAt) : now;
-
-    const previous = await this.reports.findOne({
-      where: { objectId: dto.objectId, status: PhotoReportStatus.APPROVED },
-      order: { capturedAt: 'DESC' },
-    });
-
-    const verification = verifyPhotoReport({
-      capturedAt,
-      uploadedAt: now,
-      photoLat: dto.lat ?? null,
-      photoLng: dto.lng ?? null,
-      objectLat: object.lat,
-      objectLng: object.lng,
-      reportedProgress: dto.progressPercent,
-      previousProgress: previous?.progressPercent ?? object.progressPercent,
-      daysSincePrevious: previous
-        ? Math.max(
-            1,
-            Math.round(
-              (capturedAt.getTime() - previous.capturedAt.getTime()) /
-                86_400_000,
-            ),
-          )
-        : null,
-    });
-
-    const created = await this.dataSource.transaction(async (em) => {
-      const report = await em.save(
-        em.create(PhotoReport, {
-          objectId: dto.objectId,
-          capturedAt,
-          lat: dto.lat ?? null,
-          lng: dto.lng ?? null,
-          progressPercent: dto.progressPercent,
-          note: dto.note ?? null,
-          status: PhotoReportStatus.PENDING,
-          aiVerdict: verification.verdict,
-          aiConfidence: verification.confidence,
-          aiComment: verification.comment,
-          aiCheckedAt: now,
-          authorId: user.id,
-        }),
-      );
-
-      await em.save(
-        dto.fileIds.map((fileId, index) => {
-          const file = files.find((f) => f.id === fileId)!;
-          return em.create(PhotoReportImage, {
-            reportId: report.id,
-            fileId,
-            url: file.url,
-            sortOrder: index,
-          });
-        }),
-      );
-
-      // «Oxirgi hisobot» belgisi — «uzoq vaqt hisobot yo‘q» ogohlantirishi
-      // aynan shu maydondan hisoblanadi.
-      await em.update(
-        ConstructionObject,
-        { id: dto.objectId },
-        { lastReportAt: now },
-      );
-      return report;
-    });
+    /*
+     * ⚠️ Hisobot yozish mantig‘i `photo-report.factory.ts` da — bosqichni
+     * topshirish yo‘li ham AYNAN shu funksiyani chaqiradi. Ikki nusxa
+     * bo‘lsa, surat tekshiruvi (vaqt, joylashuv, sakrash) bitta yo‘ldan
+     * jimgina tushib qolardi.
+     */
+    const created = await this.dataSource.transaction((em) =>
+      createPhotoReportInTx(em, {
+        object,
+        fileIds: dto.fileIds,
+        progressPercent: dto.progressPercent,
+        capturedAt: dto.capturedAt ? new Date(dto.capturedAt) : new Date(),
+        lat: dto.lat ?? null,
+        lng: dto.lng ?? null,
+        note: dto.note ?? null,
+        authorId: user.id,
+      }),
+    );
 
     /*
      * ⚠️ SURAT TAHLILI SHU YERDA KUTILMAYDI. Model chaqiruvi 5–30 soniya
@@ -215,7 +156,7 @@ export class PhotoReportsService {
       action: 'photo-report.create',
       entity: 'PhotoReport',
       entityId: created.id,
-      changes: { aiVerdict: { before: null, after: verification.verdict } },
+      changes: { aiVerdict: { before: null, after: created.aiVerdict } },
     });
 
     return this.findOne(created.id);

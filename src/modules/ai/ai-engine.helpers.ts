@@ -320,3 +320,194 @@ export function analyzeAll(
     budgetDeviation(input),
   ];
 }
+
+/* ═══════════════════ BOSQICH (ish rejasi) TAHLILI ═══════════════════ */
+
+export interface MilestoneAnalysisInput {
+  milestoneName: string;
+  objectName: string;
+  /** Bosqichning umumiy bajarilishdagi ulushi, %. */
+  weight: number;
+  /** Bosqichning O‘Z bajarilishi, %. */
+  milestonePercent: number;
+  plannedStart: string;
+  plannedEnd: string;
+  actualEnd: string | null;
+  cancelled: boolean;
+  workerCount: number | null;
+  /** Shu bosqich bo‘yicha yuborilgan foto-hisobotlar soni. */
+  reportCount: number;
+  /** Modelning SURATDAN bergan bahosi — bo‘lsa. */
+  aiEstimatedProgress: number | null;
+  /** Reja bo‘yicha hisoblangan OBYEKT bajarilishi, %. */
+  objectProgress: number;
+  /** Bugun reja bo‘yicha bo‘lishi kerak bo‘lgan obyekt bajarilishi, %. */
+  objectExpectedProgress: number;
+  totalMilestones: number;
+  doneMilestones: number;
+}
+
+/**
+ * Bosqichning BUGUNGI reja bo‘yicha bajarilishi, %.
+ *
+ * ⚠️ Chiziqli taqsimot ATAYLAB: qurilishning haqiqiy egri chizig‘i
+ * (S-curve) bosqich ichida ham bo‘ladi, lekin uni chizish uchun
+ * tizimda ma’lumot YO‘Q. Soxta aniqlik o‘rniga ochiq va tekshirib
+ * bo‘ladigan qoida tanlandi: «muddatning yarmi o‘tdi — yarmi
+ * bajarilgan bo‘lishi kutiladi».
+ */
+export function milestoneExpectedPercent(
+  plannedStart: string,
+  plannedEnd: string,
+  today: Date,
+): number {
+  const total = diffInDays(plannedStart, plannedEnd);
+  const todayKey = toDateKey(today)!;
+  if (total === null || total <= 0) {
+    // Bir kunlik bosqich: muddati kelgan bo‘lsa — 100 kutiladi.
+    return (diffInDays(plannedEnd, todayKey) ?? 0) >= 0 ? 100 : 0;
+  }
+  const passed = diffInDays(plannedStart, todayKey) ?? 0;
+  return Number(clamp((passed / total) * 100, 0, 100).toFixed(2));
+}
+
+/**
+ * BITTA BOSQICH TAHLILI.
+ *
+ * `score` — bosqichning BAJARILISHI (0–100), risk bali EMAS.
+ * ⚠️ Qolgan tahlil turlarida `score` risk bilan o‘sadi, bu yerda esa
+ * kamayadi. Farq ataylab: foydalanuvchi «bosqich necha foiz» degan
+ * savolga javob kutadi va aynan shu raqam kartada katta chiqadi.
+ * Xavf darajasi alohida — `riskLevel` da.
+ */
+export function analyzeMilestone(
+  input: MilestoneAnalysisInput,
+  today: Date,
+): AnalysisOutput {
+  const percent = clamp(input.milestonePercent, 0, 100);
+  const contribution = Number(((input.weight * percent) / 100).toFixed(2));
+  const expected = milestoneExpectedPercent(
+    input.plannedStart,
+    input.plannedEnd,
+    today,
+  );
+  const gap = Number((expected - percent).toFixed(2));
+  const overdueDays = Math.max(
+    0,
+    diffInDays(input.plannedEnd, toDateKey(today)) ?? 0,
+  );
+  const daysLeft = Math.max(
+    0,
+    diffInDays(toDateKey(today), input.plannedEnd) ?? 0,
+  );
+  const done = percent >= 100;
+
+  const recommendations: string[] = [];
+  let riskLevel: RiskLevel;
+
+  if (input.cancelled) {
+    riskLevel = RiskLevel.LOW;
+  } else if (done) {
+    riskLevel = RiskLevel.LOW;
+  } else if (gap >= 40 || overdueDays > 30) {
+    riskLevel = RiskLevel.CRITICAL;
+  } else if (gap >= 20 || overdueDays > 0) {
+    riskLevel = RiskLevel.HIGH;
+  } else if (gap >= 8) {
+    riskLevel = RiskLevel.MEDIUM;
+  } else {
+    riskLevel = RiskLevel.LOW;
+  }
+
+  /*
+   * ⚠️ HISOBOTDAGI RAQAM bilan SURATDAN BAHO farqi alohida tekshiriladi.
+   * «90% bajarildi» deb yozilgan, surat esa 55% ko‘rsatsa — bu kechikish
+   * emas, ISHONCHLILIK muammosi va uni kechikish bilan bir xil
+   * ko‘rsatish odamni noto‘g‘ri qarorga olib boradi.
+   */
+  const estimate = input.aiEstimatedProgress;
+  const estimateGap =
+    estimate === null ? null : Number((percent - estimate).toFixed(2));
+  if (estimateGap !== null && Math.abs(estimateGap) >= 15) {
+    recommendations.push(
+      estimateGap > 0
+        ? `Hisobotda ${percent}% deyilgan, suratlardan baholangani esa ${estimate}% — farq ${Math.abs(estimateGap)} foiz bandi. Bosqichni joyida tekshiring.`
+        : `Suratlardan baholangan bajarilish (${estimate}%) hisobotdagidan yuqori — foizni yangilashni unutmang.`,
+    );
+    if (riskLevel === RiskLevel.LOW) riskLevel = RiskLevel.MEDIUM;
+    else if (riskLevel === RiskLevel.MEDIUM) riskLevel = RiskLevel.HIGH;
+  }
+
+  if (input.reportCount === 0 && !input.cancelled) {
+    recommendations.push(
+      'Bosqich bo‘yicha birorta foto-hisobot yo‘q — topshirishda surat biriktiring.',
+    );
+  }
+  if (!done && overdueDays > 0) {
+    recommendations.push(
+      `Muddat ${overdueDays} kun oldin tugagan — yangi muddat belgilang yoki ishni jadallashtiring.`,
+    );
+  } else if (!done && gap >= 8) {
+    recommendations.push(
+      `Rejadan ${gap} foiz bandi ortda. Qolgan ${daysLeft} kunda ${Number((100 - percent).toFixed(2))}% bajarilishi kerak.`,
+    );
+  }
+  if (!done && (input.workerCount ?? 0) === 0) {
+    recommendations.push(
+      'Bosqichga ishchilar soni kiritilmagan — resurs yetishmasligini baholab bo‘lmaydi.',
+    );
+  }
+  if (done) {
+    recommendations.push(
+      'Bajarilgan ishlar dalolatnomasini hujjatlar bo‘limiga yuklang.',
+    );
+  }
+
+  const planLine = `Rejada ${input.totalMilestones} ta bosqich, ${input.doneMilestones} tasi yakunlangan.`;
+  const objectLine = `Obyektning umumiy bajarilishi — ${input.objectProgress}% (reja bo‘yicha ${input.objectExpectedProgress}%).`;
+
+  let summary: string;
+  if (input.cancelled) {
+    summary = `«${input.milestoneName}» bosqichi bekor qilingan va umumiy hisobga kirmaydi. ${objectLine}`;
+  } else if (done) {
+    summary =
+      `«${input.milestoneName}» bosqichi 100% bajarildi va umumiy bajarilishga ${input.weight}% qo‘shdi. ` +
+      `${planLine} ${objectLine}`;
+  } else {
+    summary =
+      `«${input.milestoneName}» bosqichi ${percent}% bajarildi — ulushi ${input.weight}%, shundan ${contribution}% umumiy natijaga kirdi. ` +
+      (overdueDays > 0
+        ? `Muddat ${overdueDays} kun oldin tugagan. `
+        : `Muddatgacha ${daysLeft} kun qoldi, reja bo‘yicha bugun ${expected}% bo‘lishi kerak edi. `) +
+      objectLine;
+  }
+
+  return {
+    type: AiAnalysisType.MILESTONE_PROGRESS,
+    score: Number(percent.toFixed(2)),
+    riskLevel,
+    summary,
+    recommendations,
+    details: {
+      milestonePercent: Number(percent.toFixed(2)),
+      milestoneExpected: expected,
+      milestoneGap: gap,
+      weight: input.weight,
+      contribution,
+      overdueDays,
+      daysLeft,
+      plannedEnd: formatDateUz(input.plannedEnd, { utc: true }),
+      actualEnd: input.actualEnd
+        ? formatDateUz(input.actualEnd, { utc: true })
+        : null,
+      workerCount: input.workerCount,
+      reportCount: input.reportCount,
+      aiEstimatedProgress: estimate,
+      estimateGap,
+      objectProgress: input.objectProgress,
+      objectExpectedProgress: input.objectExpectedProgress,
+      totalMilestones: input.totalMilestones,
+      doneMilestones: input.doneMilestones,
+    },
+  };
+}

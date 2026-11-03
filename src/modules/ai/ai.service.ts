@@ -4,14 +4,23 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AiAnalysis } from '../../database/entities/ai-analysis.entity';
 import { ConstructionObject } from '../../database/entities/construction-object.entity';
+import { ObjectMilestone } from '../../database/entities/object-milestone.entity';
 import { ObjectProgressUpdate } from '../../database/entities/object-progress-update.entity';
+import { PhotoReport } from '../../database/entities/photo-report.entity';
 import {
   AiAnalysisType,
+  MilestoneStatus,
   ObjectStatus,
   RiskLevel,
 } from '../../common/constants/enums';
 import { tashkentToday, toDateKey } from '../../helpers/date.helpers';
-import { analyzeAll, type AnalysisInput } from './ai-engine.helpers';
+import { planProgress } from '../../helpers/milestone-plan.helpers';
+import {
+  analyzeAll,
+  analyzeMilestone as runMilestoneAnalysis,
+  type AnalysisInput,
+  type MilestoneAnalysisInput,
+} from './ai-engine.helpers';
 
 export const AI_MODEL_NAME = 'rule-engine-v1';
 
@@ -44,6 +53,10 @@ export class AiService {
     private readonly objects: Repository<ConstructionObject>,
     @InjectRepository(ObjectProgressUpdate)
     private readonly progress: Repository<ObjectProgressUpdate>,
+    @InjectRepository(ObjectMilestone)
+    private readonly milestones: Repository<ObjectMilestone>,
+    @InjectRepository(PhotoReport)
+    private readonly photos: Repository<PhotoReport>,
   ) {}
 
   /** Bitta obyekt bo‘yicha oxirgi tahlillar. */
@@ -57,6 +70,10 @@ export class AiService {
       .createQueryBuilder('a')
       .distinctOn(['a.type'])
       .where('a.object_id = :objectId', { objectId })
+      // ⚠️ Bosqich tahlillari CHETDA qoladi: ular `type` bo‘yicha bitta
+      // guruhga tushib, tasodifiy bitta bosqich butun obyekt tahlili
+      // o‘rniga ko‘rinib qolardi. Ular `forMilestones()` dan olinadi.
+      .andWhere('a.milestone_id IS NULL')
       .orderBy('a.type', 'ASC')
       .addOrderBy('a.createdAt', 'DESC')
       .getMany();
@@ -90,6 +107,165 @@ export class AiService {
     return saved;
   }
 
+  /* ═════════════════ BOSQICHLAR (ish rejasi) ═════════════════ */
+
+  /** Obyektdagi HAR BOSQICH bo‘yicha oxirgi tahlil. */
+  async forMilestones(objectId: string): Promise<AiAnalysis[]> {
+    return this.analyses
+      .createQueryBuilder('a')
+      .distinctOn(['a.milestone_id'])
+      .where('a.object_id = :objectId', { objectId })
+      .andWhere('a.milestone_id IS NOT NULL')
+      .orderBy('a.milestone_id', 'ASC')
+      .addOrderBy('a.createdAt', 'DESC')
+      .getMany();
+  }
+
+  /**
+   * BITTA BOSQICHNI TAHLIL QILISH.
+   *
+   * ⚠️ Obyekt bajarilishi BOSQICHLARDAN hisoblanadi (`weight × percent`),
+   * obyektdagi keshlangan ustundan EMAS. Sabab: topshirish va tahlil
+   * bitta so‘rovda ketma-ket boradi va kesh hali yangilanmagan bo‘lishi
+   * mumkin — u paytda AI topshirishdan OLDINGI foizni aytib yuborardi.
+   */
+  async analyzeMilestone(milestoneId: string): Promise<AiAnalysis> {
+    const milestone = await this.milestones.findOne({
+      where: { id: milestoneId },
+      relations: { object: true },
+    });
+    if (!milestone) throw new NotFoundException('Bosqich topilmadi');
+
+    const siblings = await this.milestones.find({
+      where: { objectId: milestone.objectId },
+    });
+    const active = siblings.filter(
+      (m) => m.status !== MilestoneStatus.CANCELLED,
+    );
+    /*
+     * ⚠️ Hisob `planProgress()` dan — `MilestonesService` ham AYNAN shu
+     * funksiyani chaqiradi. Ikki nusxa bo‘lsa, topshirishdan keyin
+     * obyekt kartasi bir foizni, AI xulosasi boshqa foizni aytardi.
+     */
+    const objectProgress =
+      planProgress(siblings) ?? Number(milestone.object.progressPercent);
+
+    /*
+     * Modelning SURATDAN bergan oxirgi bahosi — shu bosqich bo‘yicha.
+     * Bo‘lmasa `null` va tahlil bu omilni umuman eslatmaydi: «ma’lumot
+     * yo‘q» ni «0%» deb ko‘rsatish eng xavfli xato bo‘lardi.
+     */
+    const lastVision = await this.photos.findOne({
+      where: { milestoneId },
+      order: { createdAt: 'DESC' },
+      select: { id: true, aiEstimatedProgress: true, createdAt: true },
+    });
+
+    const input: MilestoneAnalysisInput = {
+      milestoneName: milestone.name,
+      objectName: milestone.object.name,
+      weight: Number(milestone.weight),
+      milestonePercent: Number(milestone.progressPercent),
+      plannedStart: toDateKey(milestone.plannedStart)!,
+      plannedEnd: toDateKey(milestone.plannedEnd)!,
+      actualEnd: milestone.actualEnd ? toDateKey(milestone.actualEnd) : null,
+      cancelled: milestone.status === MilestoneStatus.CANCELLED,
+      workerCount: milestone.workerCount,
+      reportCount: milestone.reportCount,
+      aiEstimatedProgress: lastVision?.aiEstimatedProgress ?? null,
+      objectProgress,
+      objectExpectedProgress: Number(milestone.object.expectedProgress),
+      totalMilestones: active.length,
+      doneMilestones: active.filter(
+        (m) => Number(m.progressPercent) >= 100 || m.actualEnd !== null,
+      ).length,
+    };
+
+    const result = runMilestoneAnalysis(input, tashkentToday());
+
+    return this.analyses.save(
+      this.analyses.create({
+        objectId: milestone.objectId,
+        milestoneId: milestone.id,
+        type: result.type,
+        score: result.score,
+        riskLevel: result.riskLevel,
+        summary: result.summary,
+        recommendations: result.recommendations,
+        details: result.details,
+        model: AI_MODEL_NAME,
+      }),
+    );
+  }
+
+  /** Obyektning HAMMA bosqichini tahlil qilish — «Ish rejasi» tugmasi. */
+  async analyzeObjectMilestones(objectId: string): Promise<AiAnalysis[]> {
+    const rows = await this.milestones.find({
+      where: { objectId },
+      order: { sortOrder: 'ASC' },
+    });
+    const out: AiAnalysis[] = [];
+    for (const row of rows) {
+      // ⚠️ Bittasi yiqilsa qolganlari baribir tahlil qilinadi — aks
+      // holda bitta buzuq bosqich butun rejani tahlilsiz qoldirardi.
+      try {
+        out.push(await this.analyzeMilestone(row.id));
+      } catch (error) {
+        this.logger.warn(
+          `Bosqich tahlili yiqildi: ${row.id} — ${String(error)}`,
+        );
+      }
+    }
+    return out;
+  }
+
+  /**
+   * TANLANGAN OBYEKTLARNI tahlil qilish.
+   *
+   * ⚠️ Tanlov MAJBURIY va yuqori chegarali. «Hammasini tahlil qilish»
+   * alohida yo‘lda (`runNow`) qoladi, chunki u butun bazani aylanadi va
+   * `settings.manage` ruxsatini talab qiladi — tasodifan bosilib
+   * qolmasligi kerak.
+   */
+  async analyzeMany(
+    objectIds: string[],
+    withMilestones: boolean,
+  ): Promise<{
+    analyzed: number;
+    failed: number;
+    milestones: number;
+    results: Array<{ objectId: string; ok: boolean; message?: string }>;
+  }> {
+    const results: Array<{
+      objectId: string;
+      ok: boolean;
+      message?: string;
+    }> = [];
+    let analyzed = 0;
+    let failed = 0;
+    let milestones = 0;
+
+    for (const objectId of objectIds) {
+      try {
+        await this.analyzeObject(objectId);
+        if (withMilestones) {
+          milestones += (await this.analyzeObjectMilestones(objectId)).length;
+        }
+        analyzed += 1;
+        results.push({ objectId, ok: true });
+      } catch (error) {
+        failed += 1;
+        results.push({
+          objectId,
+          ok: false,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return { analyzed, failed, milestones, results };
+  }
+
   /** «AI tahlil» bo‘limining bosh ekrani. */
   async overview(regionId?: string, limit = 10): Promise<AiOverview> {
     const qb = this.analyses
@@ -105,6 +281,7 @@ export class AiService {
       .addSelect('o.name', 'objectName')
       .addSelect('d.short_name', 'districtName')
       .where('a.type = :type', { type: AiAnalysisType.RISK_SCORE })
+      .andWhere('a.milestone_id IS NULL')
       .andWhere('o.deleted_at IS NULL')
       .orderBy('a.object_id', 'ASC')
       .addOrderBy('a.created_at', 'DESC');

@@ -191,7 +191,7 @@ export class ConstructionObject extends BaseEntity {
   @Column('int', { nullable: true })
   capacity!: number | null;
 
-  @ApiProperty({ example: 'o‘quvchi o‘rni' })
+  @ApiProperty({ example: 'ishchi o‘rni' })
   @Column({
     type: 'varchar',
     length: 60,
