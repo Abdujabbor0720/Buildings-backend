@@ -35,6 +35,7 @@ import {
 } from '../../helpers/date.helpers';
 import { evaluateObjectHealth } from '../../helpers/object-health.helpers';
 import { analyzeAll } from '../../modules/ai/ai-engine.helpers';
+import { assignMahallasInTx } from '../../modules/geo/mahalla-assign';
 import { verifyPhotoReport } from '../../modules/photo-reports/photo-verification.helpers';
 import { AiAnalysis } from '../entities/ai-analysis.entity';
 import { AppSetting } from '../entities/app-setting.entity';
@@ -44,6 +45,7 @@ import { Contractor } from '../entities/contractor.entity';
 import { Customer } from '../entities/customer.entity';
 import { DelayReason } from '../entities/delay-reason.entity';
 import { District } from '../entities/district.entity';
+import { Mahalla } from '../entities/mahalla.entity';
 import { FundingAllocation } from '../entities/funding-allocation.entity';
 import { FundingSource } from '../entities/funding-source.entity';
 import { FundingTransaction } from '../entities/funding-transaction.entity';
@@ -82,6 +84,18 @@ interface GeoFeature {
     shortName: string;
     soato: string | null;
     kind: 'district' | 'city';
+    centerLat: number;
+    centerLng: number;
+  };
+  geometry: Record<string, unknown>;
+}
+
+interface MahallaFeature {
+  properties: {
+    code: string;
+    name: string;
+    officialName: string | null;
+    districtCode: string;
     centerLat: number;
     centerLng: number;
   };
@@ -137,6 +151,7 @@ const TABLES = [
   'delay_reasons',
   'funding_sources',
   'construction_types',
+  'mahallas',
   'districts',
   'regions',
   'app_settings',
@@ -154,13 +169,13 @@ async function main(): Promise<void> {
     await dataSource.transaction(async (em) => {
       await truncateAll(em);
 
-      const { region, districts } = await seedGeo(em);
+      const { region, districts, mahallaCenters } = await seedGeo(em);
       const catalogs = await seedCatalogs(em);
       const customers = await seedCustomers(em);
       const contractors = await seedContractors(em);
       const users = await seedUsers(em, region, districts, contractors);
 
-      const specs = buildSpecs(rng, today, districts);
+      const specs = buildSpecs(rng, today, districts, mahallaCenters);
       const objects = await seedObjects(em, rng, today, specs, {
         region,
         districts,
@@ -170,6 +185,7 @@ async function main(): Promise<void> {
         users,
       });
 
+      await assignMahallas(em, objects);
       await seedMilestones(em, rng, today, objects, specs);
       await seedProgressHistory(em, rng, today, objects, specs, users);
       await seedDelays(
@@ -227,9 +243,11 @@ async function truncateAll(em: EntityManager): Promise<void> {
 
 /* ───────────────────────── 1. Geografiya ───────────────────────── */
 
-async function seedGeo(
-  em: EntityManager,
-): Promise<{ region: Region; districts: Map<string, District> }> {
+async function seedGeo(em: EntityManager): Promise<{
+  region: Region;
+  districts: Map<string, District>;
+  mahallaCenters: Map<string, Array<{ lat: number; lng: number }>>;
+}> {
   const geo = readJson<{ bbox: number[]; features: GeoFeature[] }>(
     'andijon-districts.geojson',
   );
@@ -263,8 +281,100 @@ async function seedGeo(
   );
 
   const saved = await em.save(rows);
+  const byCode = new Map(saved.map((d) => [d.code, d]));
   console.log(`🗺️  Viloyat va ${saved.length} ta tuman/shahar qo‘shildi`);
-  return { region, districts: new Map(saved.map((d) => [d.code, d])) };
+
+  const mahallaCenters = await seedMahallas(em, byCode);
+  return { region, districts: byCode, mahallaCenters };
+}
+
+/**
+ * MAHALLALAR (MFY) — tuman xaritasining kesimi.
+ *
+ * ⚠️ Manba OpenStreetMap (ODbL) va QOPLAMA TO‘LIQ EMAS: faylda hozircha
+ * asosan Andijon tumani va Andijon shahri bor. Chegarasi yo‘q tuman
+ * uchun mahalla yozuvi ham bo‘lmaydi — bu kutilgan hol, xarita u yerda
+ * obyektlarni nuqta sifatida ko‘rsatadi.
+ *
+ * ⚠️ Tumani topilmagan mahalla JIMGINA tashlab ketilmaydi, sanab
+ * aytiladi: fayl almashtirilganda tuman kodlari mos kelmay qolishi eng
+ * ko‘p uchraydigan xato va u «mahallalar nega kam» degan savol bo‘lib
+ * qaytardi.
+ */
+async function seedMahallas(
+  em: EntityManager,
+  districts: Map<string, District>,
+): Promise<Map<string, Array<{ lat: number; lng: number }>>> {
+  const geo = readJson<{ features: MahallaFeature[] }>(
+    'andijon-mahallas.geojson',
+  );
+
+  const rows: Mahalla[] = [];
+  let orphan = 0;
+  for (const f of geo.features) {
+    const district = districts.get(f.properties.districtCode);
+    if (!district) {
+      orphan += 1;
+      continue;
+    }
+    rows.push(
+      em.create(Mahalla, {
+        code: f.properties.code,
+        name: f.properties.name,
+        officialName: f.properties.officialName ?? null,
+        centerLat: f.properties.centerLat,
+        centerLng: f.properties.centerLng,
+        geometry: f.geometry,
+        districtId: district.id,
+        isActive: true,
+      }),
+    );
+  }
+
+  const saved = await em.save(rows);
+  const covered = new Set(saved.map((m) => m.districtId)).size;
+  console.log(
+    `🏘️  ${saved.length} ta mahalla (MFY) qo‘shildi — ${covered} ta tumanda chegara bor` +
+      (orphan > 0 ? `, ${orphan} tasining tumani topilmadi` : ''),
+  );
+
+  /* Markazlar generatorga qaytariladi: namunaviy obyektlar aynan
+     mahalla ichiga joylashtiriladi (`object-generator.ts`, `scatter`). */
+  const idToCode = new Map([...districts.values()].map((d) => [d.id, d.code]));
+  const centers = new Map<string, Array<{ lat: number; lng: number }>>();
+  for (const m of saved) {
+    const code = idToCode.get(m.districtId);
+    if (!code) continue;
+    const list = centers.get(code);
+    if (list) list.push({ lat: m.centerLat, lng: m.centerLng });
+    else centers.set(code, [{ lat: m.centerLat, lng: m.centerLng }]);
+  }
+  return centers;
+}
+
+/**
+ * Obyektlarni mahallaga biriktirish — KOORDINATASI bo‘yicha.
+ *
+ * ⚠️ Mantiq `modules/geo/mahalla-assign.ts` da, bu yerda emas: AYNI
+ * funksiyani obyekt yaratish va tahrirlash yo‘li ham chaqiradi.
+ * Ikki nusxa bo‘lsa, seed'dagi taqsimot bilan jonli tizimdagi taqsimot
+ * boshqacha bo‘lib qolardi.
+ *
+ * ⚠️ «Biriktirilmagan» soni ATAYLAB chiqariladi: u xato emas, QOPLAMA
+ * o‘lchovi. Son keskin oshsa — chegara fayli yangilanib, tuman kodlari
+ * mos kelmay qolgan.
+ */
+async function assignMahallas(
+  em: EntityManager,
+  objects: ConstructionObject[],
+): Promise<void> {
+  const { matched, unmatched } = await assignMahallasInTx(em, objects);
+  console.log(
+    `🏘️  Mahallaga biriktirildi: ${matched} ta obyekt` +
+      (unmatched > 0
+        ? `, ${unmatched} tasining mahallasi aniqlanmadi (chegara yo‘q)`
+        : ''),
+  );
 }
 
 /* ───────────────────────── 2. Kataloglar ───────────────────────── */
@@ -382,6 +492,7 @@ function buildSpecs(
   rng: Rng,
   today: Date,
   districts: Map<string, District>,
+  mahallaCenters: Map<string, Array<{ lat: number; lng: number }>>,
 ): ObjectSpec[] {
   const distribution = readJson<DistributionData>('distribution.json');
   const templates = readJson<Record<string, TypeTemplate>>(
@@ -399,6 +510,7 @@ function buildSpecs(
         shortName: d.shortName,
         centerLat: d.centerLat,
         centerLng: d.centerLng,
+        mahallaCenters: mahallaCenters.get(d.code),
       },
     ]),
   );

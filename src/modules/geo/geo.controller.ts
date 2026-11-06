@@ -57,6 +57,36 @@ export class GeoController {
     return this.geo.districtsGeoJson(query);
   }
 
+  /*
+   * ⚠️ `districts/:id/...` yo'llari `districts/:id` dan OLDIN turadi.
+   * Nest marshrutlarni e'lon tartibida solishtiradi: `:id` oldinda
+   * bo'lsa, u `geojson` ni ham «id» deb qabul qilib, UUID tekshiruvida
+   * yiqilardi.
+   */
+
+  @Get('districts/:id/mahallas/stats')
+  @RequirePermissions(PERMISSIONS.OBJECTS_VIEW)
+  @ApiOperation({ summary: 'Mahallalar kesimida obyektlar statistikasi' })
+  mahallaStats(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: DistrictStatsQueryDto,
+  ) {
+    return this.geo.mahallaStats(id, query);
+  }
+
+  @Get('districts/:id/mahallas/geojson')
+  @RequirePermissions(PERMISSIONS.OBJECTS_VIEW)
+  @ApiOperation({
+    summary:
+      'Tuman xaritasi — mahalla chegaralari, statistika va obyekt nuqtalari',
+  })
+  mahallasGeoJson(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: DistrictStatsQueryDto,
+  ) {
+    return this.geo.mahallasGeoJson(id, query);
+  }
+
   @Get('districts/:id')
   @ApiOperation({ summary: 'Bitta tuman (geometriyasi bilan)' })
   getDistrict(@Param('id', ParseUUIDPipe) id: string) {

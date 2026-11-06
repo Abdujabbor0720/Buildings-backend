@@ -15,6 +15,7 @@ import {
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { ConstructionObject } from '../../database/entities/construction-object.entity';
 import { District } from '../../database/entities/district.entity';
+import { resolveMahallaId } from '../geo/mahalla-assign';
 import { ObjectProgressUpdate } from '../../database/entities/object-progress-update.entity';
 import { Region } from '../../database/entities/region.entity';
 import {
@@ -296,6 +297,11 @@ export class ObjectsService {
         // `regionId` tumandan OLINADI, mijozdan emas: aks holda tuman bilan
         // viloyat mos kelmaydigan yozuv paydo bo‘lishi mumkin edi.
         regionId: district.regionId,
+        // ⚠️ Mahalla ham KOORDINATADAN olinadi, mijozdan emas — u
+        // tanlanadigan maydon emas, joylashuvdan kelib chiqadigan fakt
+        // (`mahalla-assign.ts` ga qarang). Koordinata yo‘q bo‘lsa yoki
+        // tumanning chegaralari yuklanmagan bo‘lsa — `null`.
+        mahallaId: await resolveMahallaId(em, district.id, dto.lng, dto.lat),
         status: dto.status ?? ObjectStatus.NOT_STARTED,
         progressPercent: dto.progressPercent ?? 0,
       });
@@ -359,7 +365,29 @@ export class ObjectsService {
     );
 
     await this.dataSource.transaction(async (em) => {
-      await em.update(ConstructionObject, { id }, { ...dto, regionId });
+      /*
+       * ⚠️ Mahalla JOYLASHUV yoki TUMAN o‘zgarganda qayta hisoblanadi.
+       * Har saqlashda qayta hisoblash ham mumkin edi, lekin u nomi
+       * to‘g‘rilangan obyekt uchun ham 98 ta ko‘pburchakni aylanib
+       * chiqishni anglatardi.
+       */
+      const districtId = dto.districtId ?? existing.districtId;
+      const moved =
+        (dto.lat !== undefined && dto.lat !== existing.lat) ||
+        (dto.lng !== undefined && dto.lng !== existing.lng) ||
+        districtId !== existing.districtId;
+
+      const patch: Record<string, unknown> = { ...dto, regionId };
+      if (moved) {
+        patch.mahallaId = await resolveMahallaId(
+          em,
+          districtId,
+          dto.lng ?? existing.lng,
+          dto.lat ?? existing.lat,
+        );
+      }
+
+      await em.update(ConstructionObject, { id }, patch);
       await this.health.refreshOne(id, em);
     });
 

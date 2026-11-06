@@ -6,6 +6,7 @@
 export { BaseEntity } from './base.entity';
 export { Region } from './region.entity';
 export { District } from './district.entity';
+export { Mahalla } from './mahalla.entity';
 export { ConstructionType } from './construction-type.entity';
 export { FundingSource } from './funding-source.entity';
 export { DelayReason } from './delay-reason.entity';

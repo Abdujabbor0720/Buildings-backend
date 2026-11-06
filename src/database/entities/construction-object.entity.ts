@@ -88,6 +88,28 @@ export class ConstructionObject extends BaseEntity {
   district!: District;
 
   /**
+   * MAHALLA (MFY) — obyekt KOORDINATASIDAN hisoblanadi, qo‘lda
+   * tanlanmaydi (`mahalla.helpers.ts`, nuqta-poligon).
+   *
+   * ⚠️ `null` — ODDIY HOL, xato emas: obyektning koordinatasi hali
+   * yo‘q yoki o‘sha tumanning mahalla chegaralari yuklanmagan
+   * (qoplama haqida `mahalla.entity.ts` ga qarang). Bunday obyekt
+   * hisobotdan TUSHIB QOLMAYDI — u tuman darajasida sanaladi va
+   * xaritada chegara emas, NUQTA bo‘lib ko‘rinadi.
+   *
+   * ⚠️ Bog‘lanish SATR bilan e'lon qilingan (`'Mahalla'`): `Mahalla`
+   * ham `ConstructionObject` ga ishora qiladi va to‘g‘ridan-to‘g‘ri
+   * import ikkalasini AYLANMA bog‘liqlikka tushirardi.
+   */
+  @Index()
+  @Column('uuid', { nullable: true, name: 'mahalla_id' })
+  mahallaId!: string | null;
+
+  @ManyToOne('Mahalla', 'objects', { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'mahalla_id' })
+  mahalla!: unknown;
+
+  /**
    * ⚠️ ATAYLAB TAKRORLANGAN (denormalizatsiya): tuman orqali ham olish
    * mumkin edi, lekin viloyat kesimidagi har bir dashboard so‘rovi
    * `districts` bilan JOIN talab qilardi. Tuman viloyatini almashtirmaydi,

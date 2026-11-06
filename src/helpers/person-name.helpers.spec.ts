@@ -3,11 +3,15 @@ import { fullName, shortName } from './person-name.helpers';
 describe('person-name.helpers', () => {
   describe('fullName', () => {
     it('familiyani OLDIN yozadi', () => {
-      expect(fullName({ firstName: 'Jahongir', lastName: 'Karimov' })).toBe('Karimov Jahongir');
+      expect(fullName({ firstName: 'Jahongir', lastName: 'Karimov' })).toBe(
+        'Karimov Jahongir',
+      );
     });
 
     it('faqat bitta qism bo‘lsa, ortiqcha bo‘sh joy qoldirmaydi', () => {
-      expect(fullName({ firstName: 'Jahongir', lastName: null })).toBe('Jahongir');
+      expect(fullName({ firstName: 'Jahongir', lastName: null })).toBe(
+        'Jahongir',
+      );
       expect(fullName({ lastName: 'Karimov' })).toBe('Karimov');
     });
 
@@ -19,7 +23,9 @@ describe('person-name.helpers', () => {
 
   describe('shortName', () => {
     it('ismni bosh harfga qisqartiradi', () => {
-      expect(shortName({ firstName: 'Jahongir', lastName: 'Karimov' })).toBe('J. Karimov');
+      expect(shortName({ firstName: 'Jahongir', lastName: 'Karimov' })).toBe(
+        'J. Karimov',
+      );
     });
 
     /*

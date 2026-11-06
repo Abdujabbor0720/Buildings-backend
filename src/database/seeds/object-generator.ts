@@ -46,6 +46,14 @@ export interface DistrictRef {
   shortName: string;
   centerLat: number;
   centerLng: number;
+  /**
+   * Tumandagi mahalla markazlari — NAMOYISH ma'lumotini joylashtirish uchun.
+   *
+   * ⚠️ Bo'sh bo'lishi ODDIY HOL: mahalla chegaralari hamma tumanda ham
+   * yo'q (manba — OpenStreetMap, qoplama to'liq emas). Bunday tumanda
+   * obyekt avvalgidek tuman markazi atrofiga sochiladi.
+   */
+  mahallaCenters?: Array<{ lat: number; lng: number }>;
 }
 
 /* ───────────────────────── Chiqish ───────────────────────── */
@@ -449,8 +457,29 @@ export class ObjectGenerator {
     return 'beyond';
   }
 
-  /** Markazdan kichik siljish — nuqta tuman ichida qoladi. */
+  /**
+   * Obyekt nuqtasi.
+   *
+   * ⚠️ Tumanda MAHALLA chegaralari bo'lsa, nuqta tuman markazi emas,
+   * MAHALLA markazi atrofiga qo'yiladi va siljish kichik (~200 m).
+   * Sabab namoyishga oid: tuman markazi atrofiga keng sochilgan
+   * nuqtalarning deyarli hammasi mahalla chegaralaridan tashqarida
+   * qolar va «mahallalar kesimida» xaritasi bo'sh ko'rinardi —
+   * holbuki mexanizmning o'zi ishlaydi.
+   *
+   * ⚠️ Bu FAQAT namunaviy ma'lumotga tegishli. Haqiqiy obyektning
+   * koordinatasi xaritadan tanlanadi va mahallasi o'sha nuqtadan
+   * aniqlanadi (`mahalla-assign.ts`).
+   */
   private scatter(district: DistrictRef): { lat: number; lng: number } {
+    const centers = district.mahallaCenters;
+    if (centers && centers.length > 0) {
+      const base = centers[this.rng.int(0, centers.length - 1)];
+      return {
+        lat: Number((base.lat + this.rng.float(-0.002, 0.002, 6)).toFixed(6)),
+        lng: Number((base.lng + this.rng.float(-0.002, 0.002, 6)).toFixed(6)),
+      };
+    }
     return {
       lat: Number(
         (district.centerLat + this.rng.float(-0.035, 0.035, 5)).toFixed(6),
