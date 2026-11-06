@@ -6,6 +6,7 @@ import { UserRole } from '../../common/constants/enums';
 import { Contractor } from './contractor.entity';
 import { District } from './district.entity';
 import { Region } from './region.entity';
+import { fullName, shortName } from '../../helpers/person-name.helpers';
 
 /**
  * Tizim foydalanuvchisi VA mas’ul shaxs — bitta jadval.
@@ -86,13 +87,20 @@ export class User extends BaseEntity {
   @JoinColumn({ name: 'contractor_id' })
   contractor!: Contractor | null;
 
+  /*
+   * ⚠️ Shakl `person-name.helpers.ts` da, bu yerda EMAS. Getter faqat
+   * entity qator uchun ishlaydi; `getRawMany()` bilan o'qiydigan
+   * so'rovlar (bosh sahifadagi «Kechikayotgan obyektlar») xom qator
+   * oladi va getterga YETA OLMAYDI — ular o'sha helperni chaqiradi.
+   * Formula ikki joyda bo'lsa, bitta ekranda «J. Karimov»,
+   * boshqasida «Jahongir Karimov» chiqib qolardi.
+   */
   get fullName(): string {
-    return [this.lastName, this.firstName].filter(Boolean).join(' ');
+    return fullName(this);
   }
 
   /** `J. Karimov` — header va jadvallardagi ixcham ko‘rinish. */
   get shortName(): string {
-    const initial = this.firstName ? `${this.firstName.charAt(0)}.` : '';
-    return [initial, this.lastName].filter(Boolean).join(' ');
+    return shortName(this);
   }
 }

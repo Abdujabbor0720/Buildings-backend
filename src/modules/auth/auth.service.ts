@@ -13,6 +13,7 @@ import { IsNull, LessThan, Repository } from 'typeorm';
 import { RefreshToken } from '../../database/entities/refresh-token.entity';
 import { User } from '../../database/entities/user.entity';
 import { permissionsForRole } from '../../common/constants/permissions';
+import { fullName, shortName } from '../../helpers/person-name.helpers';
 import type {
   AuthResponseDto,
   AuthTokensDto,
@@ -222,15 +223,15 @@ export class AuthService {
   }
 
   static toAuthUser(user: User): AuthUserDto {
-    const fullName = [user.lastName, user.firstName].filter(Boolean).join(' ');
-    const initial = user.firstName ? `${user.firstName.charAt(0)}.` : '';
+    // ⚠️ Shakl `person-name.helpers.ts` dan — bu yerda qaytadan
+    // yozilmaydi (`user.entity.ts` dagi izohga qarang).
     return {
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      fullName,
-      shortName: [initial, user.lastName].filter(Boolean).join(' '),
+      fullName: fullName(user),
+      shortName: shortName(user),
       position: user.position,
       avatarUrl: user.avatarUrl,
       role: user.role,

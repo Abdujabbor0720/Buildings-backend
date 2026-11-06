@@ -10,6 +10,7 @@ import { PhotoReport } from '../../database/entities/photo-report.entity';
 import { ObjectHealth, ObjectStatus } from '../../common/constants/enums';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import { tashkentToday } from '../../helpers/date.helpers';
+import { fullName, shortName } from '../../helpers/person-name.helpers';
 import {
   DelaysService,
   type DelayReasonBreakdown,
@@ -100,6 +101,21 @@ export interface TopDelayedItem {
   healthStatus: ObjectHealth;
   primaryReason: string | null;
   primaryReasonColor: string | null;
+  /**
+   * OBYEKT MAS'ULI (kurator) — `ConstructionObject.responsible`.
+   *
+   * ⚠️ Uchta maydon ham kerak: `responsibleName` katakda ko'rinadi
+   * («J. Karimov»), `responsibleFullName` va `responsiblePosition`
+   * esa ko'rsatmada — ixcham ism kimligini aytadi, lavozim esa
+   * «nega aynan u javob beradi» degan savolga javob beradi.
+   *
+   * ⚠️ `null` — mas'ul BIRIKTIRILMAGAN. Bu xatolik emas, ma'lumot
+   * to'liq emasligi: kechikayotgan obyektda mas'ul yo'qligi aynan
+   * ko'rinib turishi kerak.
+   */
+  responsibleName: string | null;
+  responsibleFullName: string | null;
+  responsiblePosition: string | null;
 }
 
 export interface UpcomingItem {
@@ -430,6 +446,10 @@ export class DashboardService {
     const rows = await this.scoped(query, user)
       .innerJoin('o.district', 'd')
       .leftJoin('o.primaryDelayReason', 'r')
+      // ⚠️ `leftJoin`, `innerJoin` EMAS: mas'uli biriktirilmagan obyekt
+      // ro'yxatdan TUSHIB QOLMASLIGI kerak — aksincha, u eng muhim
+      // qatorlardan biri (kechikayotgan, lekin javobgari yo'q).
+      .leftJoin('o.responsible', 'resp')
       .select('o.id', 'id')
       .addSelect('o.code', 'code')
       .addSelect('o.name', 'name')
@@ -440,6 +460,9 @@ export class DashboardService {
       .addSelect('d.short_name', 'districtName')
       .addSelect('r.name', 'primaryReason')
       .addSelect('r.color', 'primaryReasonColor')
+      .addSelect('resp.first_name', 'responsibleFirstName')
+      .addSelect('resp.last_name', 'responsibleLastName')
+      .addSelect('resp.position', 'responsiblePosition')
       .andWhere('o.delay_days > 0')
       .orderBy('o.delay_days', 'DESC')
       .addOrderBy('o.risk_score', 'DESC')
@@ -447,18 +470,36 @@ export class DashboardService {
       .limit(limit)
       .getRawMany<Record<string, string>>();
 
-    return rows.map((r) => ({
-      id: r.id,
-      code: r.code,
-      name: r.name,
-      districtName: r.districtName,
-      plannedEndDate: isoDate(r.plannedEndDate),
-      delayDays: Number(r.delayDays),
-      progressPercent: Number(r.progressPercent),
-      healthStatus: r.healthStatus as ObjectHealth,
-      primaryReason: r.primaryReason ?? null,
-      primaryReasonColor: r.primaryReasonColor ?? null,
-    }));
+    return rows.map((r) => {
+      // ⚠️ Ism `shortName()` / `fullName()` HELPERI bilan yig'iladi,
+      // joyida emas: `getRawMany()` xom qator qaytaradi va
+      // `User.shortName` getteri ISHLAMAYDI. Formulani bu yerda
+      // qaytadan yozsak, bitta ekranda «J. Karimov», boshqasida
+      // «Jahongir Karimov» chiqib qolardi.
+      const person = {
+        firstName: r.responsibleFirstName,
+        lastName: r.responsibleLastName,
+      };
+      const hasResponsible = Boolean(
+        r.responsibleLastName ?? r.responsibleFirstName,
+      );
+
+      return {
+        id: r.id,
+        code: r.code,
+        name: r.name,
+        districtName: r.districtName,
+        plannedEndDate: isoDate(r.plannedEndDate),
+        delayDays: Number(r.delayDays),
+        progressPercent: Number(r.progressPercent),
+        healthStatus: r.healthStatus as ObjectHealth,
+        primaryReason: r.primaryReason ?? null,
+        primaryReasonColor: r.primaryReasonColor ?? null,
+        responsibleName: hasResponsible ? shortName(person) : null,
+        responsibleFullName: hasResponsible ? fullName(person) : null,
+        responsiblePosition: r.responsiblePosition ?? null,
+      };
+    });
   }
 
   /** «YAQIN MUDDATDA TOPSHIRILADIGAN OBYEKTLAR». */
