@@ -69,6 +69,7 @@ export class FundingService {
       .createQueryBuilder('a')
       .innerJoinAndSelect('a.object', 'o')
       .leftJoinAndSelect('o.district', 'district')
+      .leftJoinAndSelect('o.responsible', 'objectResponsible')
       .innerJoinAndSelect('a.source', 'source')
       .where('o.deleted_at IS NULL');
 
@@ -103,6 +104,7 @@ export class FundingService {
       .createQueryBuilder('t')
       .innerJoinAndSelect('t.object', 'o')
       .leftJoinAndSelect('o.district', 'district')
+      .leftJoinAndSelect('o.responsible', 'objectResponsible')
       .leftJoinAndSelect('t.allocation', 'allocation')
       .leftJoinAndSelect('allocation.source', 'source')
       .leftJoinAndSelect('t.createdBy', 'createdBy')

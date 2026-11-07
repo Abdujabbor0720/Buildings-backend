@@ -47,6 +47,11 @@ export class PhotoReportsService {
       .innerJoinAndSelect('p.object', 'o')
       .leftJoinAndSelect('o.district', 'district')
       .leftJoinAndSelect('o.type', 'type')
+      // ⚠️ Obyekt mas'uli — suratni kim tasdiqlagani (`reviewedBy`) va
+      // kim yuborgani (`author`) dan BOSHQA shaxs: u obyektning
+      // kuratori. Uchalasi bir ekranda ko'rinadi, shuning uchun
+      // taxalluslar ataylab farq qiladi.
+      .leftJoinAndSelect('o.responsible', 'objectResponsible')
       .leftJoinAndSelect('p.images', 'images')
       .leftJoinAndSelect('p.author', 'author')
       .leftJoinAndSelect('p.reviewedBy', 'reviewedBy')

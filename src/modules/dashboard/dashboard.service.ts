@@ -4,9 +4,13 @@ import { Repository, type SelectQueryBuilder } from 'typeorm';
 import { ConstructionObject } from '../../database/entities/construction-object.entity';
 import { PhotoReport } from '../../database/entities/photo-report.entity';
 import { ObjectHealth, ObjectStatus } from '../../common/constants/enums';
+import {
+  objectBriefFromRaw,
+  selectObjectBrief,
+  type ObjectBrief,
+} from '../../common/contracts/object-brief.contract';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import { tashkentToday } from '../../helpers/date.helpers';
-import { fullName, shortName } from '../../helpers/person-name.helpers';
 import {
   DelaysService,
   type DelayReasonBreakdown,
@@ -87,7 +91,11 @@ export interface TypeBreakdownItem {
   avgProgress: number;
 }
 
-export interface TopDelayedItem {
+/**
+ * ⚠️ Joylashuv va mas'ul `ObjectBrief` dan MEROS OLINADI — obyekt
+ * ko'rinadigan HAR BIR javobda shakl bir xil (`object-brief.contract.ts`).
+ */
+export interface TopDelayedItem extends ObjectBrief {
   id: string;
   code: string;
   name: string;
@@ -98,24 +106,9 @@ export interface TopDelayedItem {
   healthStatus: ObjectHealth;
   primaryReason: string | null;
   primaryReasonColor: string | null;
-  /**
-   * OBYEKT MAS'ULI (kurator) — `ConstructionObject.responsible`.
-   *
-   * ⚠️ Uchta maydon ham kerak: `responsibleName` katakda ko'rinadi
-   * («J. Karimov»), `responsibleFullName` va `responsiblePosition`
-   * esa ko'rsatmada — ixcham ism kimligini aytadi, lavozim esa
-   * «nega aynan u javob beradi» degan savolga javob beradi.
-   *
-   * ⚠️ `null` — mas'ul BIRIKTIRILMAGAN. Bu xatolik emas, ma'lumot
-   * to'liq emasligi: kechikayotgan obyektda mas'ul yo'qligi aynan
-   * ko'rinib turishi kerak.
-   */
-  responsibleName: string | null;
-  responsibleFullName: string | null;
-  responsiblePosition: string | null;
 }
 
-export interface UpcomingItem {
+export interface UpcomingItem extends ObjectBrief {
   id: string;
   code: string;
   name: string;
@@ -127,7 +120,7 @@ export interface UpcomingItem {
   status: ObjectStatus;
 }
 
-export interface RecentPhotoItem {
+export interface RecentPhotoItem extends ObjectBrief {
   id: string;
   objectId: string;
   objectName: string;
@@ -440,13 +433,9 @@ export class DashboardService {
     user: AuthUser,
     limit = 5,
   ): Promise<TopDelayedItem[]> {
-    const rows = await this.scoped(query, user)
+    const qb = this.scoped(query, user)
       .innerJoin('o.district', 'd')
       .leftJoin('o.primaryDelayReason', 'r')
-      // ⚠️ `leftJoin`, `innerJoin` EMAS: mas'uli biriktirilmagan obyekt
-      // ro'yxatdan TUSHIB QOLMASLIGI kerak — aksincha, u eng muhim
-      // qatorlardan biri (kechikayotgan, lekin javobgari yo'q).
-      .leftJoin('o.responsible', 'resp')
       .select('o.id', 'id')
       .addSelect('o.code', 'code')
       .addSelect('o.name', 'name')
@@ -457,46 +446,30 @@ export class DashboardService {
       .addSelect('d.short_name', 'districtName')
       .addSelect('r.name', 'primaryReason')
       .addSelect('r.color', 'primaryReasonColor')
-      .addSelect('resp.first_name', 'responsibleFirstName')
-      .addSelect('resp.last_name', 'responsibleLastName')
-      .addSelect('resp.position', 'responsiblePosition')
       .andWhere('o.delay_days > 0')
       .orderBy('o.delay_days', 'DESC')
       .addOrderBy('o.risk_score', 'DESC')
       .addOrderBy('o.id', 'ASC')
-      .limit(limit)
-      .getRawMany<Record<string, string>>();
+      .limit(limit);
 
-    return rows.map((r) => {
-      // ⚠️ Ism `shortName()` / `fullName()` HELPERI bilan yig'iladi,
-      // joyida emas: `getRawMany()` xom qator qaytaradi va
-      // `User.shortName` getteri ISHLAMAYDI. Formulani bu yerda
-      // qaytadan yozsak, bitta ekranda «J. Karimov», boshqasida
-      // «Jahongir Karimov» chiqib qolardi.
-      const person = {
-        firstName: r.responsibleFirstName,
-        lastName: r.responsibleLastName,
-      };
-      const hasResponsible = Boolean(
-        r.responsibleLastName ?? r.responsibleFirstName,
-      );
+    // ⚠️ `select()` zanjiridan KEYIN: oldin chaqirilsa, ustunlar
+    // keyingi `select()` bilan jimgina o‘chib ketardi.
+    selectObjectBrief(qb);
+    const rows = await qb.getRawMany<Record<string, string>>();
 
-      return {
-        id: r.id,
-        code: r.code,
-        name: r.name,
-        districtName: r.districtName,
-        plannedEndDate: isoDate(r.plannedEndDate),
-        delayDays: Number(r.delayDays),
-        progressPercent: Number(r.progressPercent),
-        healthStatus: r.healthStatus as ObjectHealth,
-        primaryReason: r.primaryReason ?? null,
-        primaryReasonColor: r.primaryReasonColor ?? null,
-        responsibleName: hasResponsible ? shortName(person) : null,
-        responsibleFullName: hasResponsible ? fullName(person) : null,
-        responsiblePosition: r.responsiblePosition ?? null,
-      };
-    });
+    return rows.map((r) => ({
+      ...objectBriefFromRaw(r),
+      id: r.id,
+      code: r.code,
+      name: r.name,
+      districtName: r.districtName,
+      plannedEndDate: isoDate(r.plannedEndDate),
+      delayDays: Number(r.delayDays),
+      progressPercent: Number(r.progressPercent),
+      healthStatus: r.healthStatus as ObjectHealth,
+      primaryReason: r.primaryReason ?? null,
+      primaryReasonColor: r.primaryReasonColor ?? null,
+    }));
   }
 
   /** «YAQIN MUDDATDA TOPSHIRILADIGAN OBYEKTLAR». */
@@ -506,7 +479,7 @@ export class DashboardService {
     limit = 5,
     withinDays = 90,
   ): Promise<UpcomingItem[]> {
-    const rows = await this.scoped(query, user)
+    const qb = this.scoped(query, user)
       .innerJoin('o.district', 'd')
       .select('o.id', 'id')
       .addSelect('o.code', 'code')
@@ -526,10 +499,13 @@ export class DashboardService {
       })
       .orderBy('o.planned_end_date', 'ASC')
       .addOrderBy('o.id', 'ASC')
-      .limit(limit)
-      .getRawMany<Record<string, string>>();
+      .limit(limit);
+
+    selectObjectBrief(qb);
+    const rows = await qb.getRawMany<Record<string, string>>();
 
     return rows.map((r) => ({
+      ...objectBriefFromRaw(r),
       id: r.id,
       code: r.code,
       name: r.name,
@@ -567,6 +543,10 @@ export class DashboardService {
       .addOrderBy('p.id', 'ASC')
       .limit(limit);
 
+    // ⚠️ Foto-hisobot kartasida ham obyektning manzili va mas'uli
+    // ko‘rinadi: «qayerdagi surat va kim javobgar» savoli bu ekranda
+    // ham tug‘iladi. Chaqiruv `select()` dan KEYIN.
+    selectObjectBrief(qb);
     applyUserScope(qb, user);
     if (query.regionId)
       qb.andWhere('o.region_id = :regionId', { regionId: query.regionId });
@@ -578,6 +558,7 @@ export class DashboardService {
 
     const rows = await qb.getRawMany<Record<string, string>>();
     return rows.map((r) => ({
+      ...objectBriefFromRaw(r),
       id: r.id,
       objectId: r.objectId,
       objectName: r.objectName,

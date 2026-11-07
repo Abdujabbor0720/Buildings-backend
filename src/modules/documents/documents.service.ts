@@ -38,6 +38,9 @@ export class DocumentsService {
       .createQueryBuilder('doc')
       .leftJoinAndSelect('doc.object', 'o')
       .leftJoinAndSelect('o.district', 'district')
+      // ⚠️ Hujjatni YUKLAGAN odam (`uploadedBy`) bilan obyekt
+      // MAS'ULI boshqa-boshqa shaxslar — ikkalasi ham ko'rinadi.
+      .leftJoinAndSelect('o.responsible', 'objectResponsible')
       .leftJoinAndSelect('doc.file', 'file')
       .leftJoinAndSelect('doc.uploadedBy', 'uploadedBy');
 

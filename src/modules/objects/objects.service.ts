@@ -24,6 +24,11 @@ import {
   UserRole,
 } from '../../common/constants/enums';
 import { PaginatedResult } from '../../common/dto/pagination.dto';
+import {
+  objectBriefFromRaw,
+  selectObjectBrief,
+  type ObjectBrief,
+} from '../../common/contracts/object-brief.contract';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import {
   diffInDays,
@@ -208,18 +213,20 @@ export class ObjectsService {
     query: ObjectQueryDto,
     user: AuthUser,
   ): Promise<
-    Array<{
-      id: string;
-      code: string;
-      name: string;
-      lat: number;
-      lng: number;
-      healthStatus: string;
-      progressPercent: number;
-      districtName: string;
-      typeName: string;
-      typeColor: string;
-    }>
+    Array<
+      ObjectBrief & {
+        id: string;
+        code: string;
+        name: string;
+        lat: number;
+        lng: number;
+        healthStatus: string;
+        progressPercent: number;
+        districtName: string;
+        typeName: string;
+        typeColor: string;
+      }
+    >
   > {
     const qb = this.objects
       .createQueryBuilder('o')
@@ -228,8 +235,6 @@ export class ObjectsService {
       .select('o.id', 'id')
       .addSelect('o.code', 'code')
       .addSelect('o.name', 'name')
-      .addSelect('o.lat', 'lat')
-      .addSelect('o.lng', 'lng')
       .addSelect('o.health_status', 'healthStatus')
       .addSelect('o.progress_percent', 'progressPercent')
       .addSelect('d.short_name', 'districtName')
@@ -240,20 +245,33 @@ export class ObjectsService {
 
     this.applyScope(qb, user);
     this.applyFilters(qb, query);
+    // ⚠️ Xaritadagi nuqtani bosgan odam birinchi navbatda «bu qayerda
+    // va kim javobgar» deb so‘raydi — manzil va mas'ul ko‘rsatmaning
+    // O‘ZIDA bo‘lishi kerak, obyekt kartasini ochmasdan.
+    // Chaqiruv `select()` dan KEYIN (`object-brief.contract.ts`).
+    selectObjectBrief(qb);
 
     const rows = await qb.limit(5000).getRawMany<Record<string, string>>();
-    return rows.map((r) => ({
-      id: r.id,
-      code: r.code,
-      name: r.name,
-      lat: Number(r.lat),
-      lng: Number(r.lng),
-      healthStatus: r.healthStatus,
-      progressPercent: Number(r.progressPercent),
-      districtName: r.districtName,
-      typeName: r.typeName,
-      typeColor: r.typeColor,
-    }));
+    return rows.map((r) => {
+      const brief = objectBriefFromRaw(r);
+      return {
+        ...brief,
+        id: r.id,
+        code: r.code,
+        name: r.name,
+        // ⚠️ `lat`/`lng` bu yerda MAJBURIY (so'rov ularni `NOT NULL`
+        // deb filtrlaydi), shuning uchun ixtiyoriy `brief` qiymati
+        // ustiga aniq son yoziladi — mijozda `null` tekshiruvi
+        // kerak bo'lmasin.
+        lat: Number(r.lat),
+        lng: Number(r.lng),
+        healthStatus: r.healthStatus,
+        progressPercent: Number(r.progressPercent),
+        districtName: r.districtName,
+        typeName: r.typeName,
+        typeColor: r.typeColor,
+      };
+    });
   }
 
   /* ───────────────────────── Yozish ───────────────────────── */

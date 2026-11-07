@@ -16,6 +16,11 @@ import {
 import { tashkentToday, toDateKey } from '../../helpers/date.helpers';
 import { planProgress } from '../../helpers/milestone-plan.helpers';
 import {
+  objectBriefFromRaw,
+  selectObjectBrief,
+  type ObjectBrief,
+} from '../../common/contracts/object-brief.contract';
+import {
   analyzeAll,
   analyzeMilestone as runMilestoneAnalysis,
   type AnalysisInput,
@@ -26,14 +31,16 @@ export const AI_MODEL_NAME = 'rule-engine-v1';
 
 export interface AiOverview {
   /** Eng yuqori riskli obyektlar. */
-  topRisks: Array<{
-    objectId: string;
-    objectName: string;
-    districtName: string;
-    score: number;
-    riskLevel: RiskLevel;
-    summary: string;
-  }>;
+  topRisks: Array<
+    ObjectBrief & {
+      objectId: string;
+      objectName: string;
+      districtName: string;
+      score: number;
+      riskLevel: RiskLevel;
+      summary: string;
+    }
+  >;
   /** Risk darajalari bo‘yicha taqsimot. */
   distribution: Array<{ level: RiskLevel; count: number; percent: number }>;
   /** Eng ko‘p uchragan tavsiyalar. */
@@ -288,6 +295,11 @@ export class AiService {
 
     if (regionId) qb.andWhere('o.region_id = :regionId', { regionId });
 
+    // ⚠️ `select()` zanjiridan KEYIN (`object-brief.contract.ts`):
+    // «eng yuqori riskli obyekt» ro‘yxatida birinchi savol — qayerda
+    // va kim javobgar.
+    selectObjectBrief(qb);
+
     const latest = await qb.getRawMany<Record<string, string>>();
 
     const counts: Record<RiskLevel, number> = {
@@ -310,6 +322,7 @@ export class AiService {
         .sort((a, b) => Number(b.score) - Number(a.score))
         .slice(0, limit)
         .map((r) => ({
+          ...objectBriefFromRaw(r),
           objectId: r.objectId,
           objectName: r.objectName,
           districtName: r.districtName,

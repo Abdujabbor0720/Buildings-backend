@@ -56,6 +56,11 @@ export class DelaysService {
       .innerJoinAndSelect('d.object', 'o')
       .leftJoinAndSelect('o.district', 'district')
       .leftJoinAndSelect('o.type', 'type')
+      // ⚠️ OBYEKT MAS'ULI (kurator) — `objectResponsible` taxallusi
+      // bilan. Bu yozuvning O'Z mas'ulidan BOSHQA odam bo'lishi
+      // mumkin; taxalluslar chalkashsa, jadvalda obyekt kuratori
+      // o'rniga boshqa shaxs chiqib qolardi.
+      .leftJoinAndSelect('o.responsible', 'objectResponsible')
       .where('o.deleted_at IS NULL');
 
     this.applyScope(qb, user);
@@ -104,7 +109,7 @@ export class DelaysService {
       relations: {
         reason: true,
         responsible: true,
-        object: { district: true, type: true },
+        object: { district: true, type: true, responsible: true },
       },
     });
     if (!delay) throw new NotFoundException('Kechikish yozuvi topilmadi');

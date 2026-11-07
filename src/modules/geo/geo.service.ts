@@ -8,6 +8,10 @@ import { Region } from '../../database/entities/region.entity';
 import { ObjectHealth } from '../../common/constants/enums';
 import { bboxOf, bboxOfPoints, unionBbox } from '../../helpers/geo.helpers';
 import type { DistrictStatsQueryDto } from './dto/geo-query.dto';
+import {
+  objectBriefFromRaw,
+  selectObjectBrief,
+} from '../../common/contracts/object-brief.contract';
 
 export interface DistrictStats {
   districtId: string;
@@ -512,14 +516,21 @@ export class GeoService {
     if (query.typeIds?.length) qb.andWhere('o.type_id IN (:...typeIds)');
     if (query.health?.length) qb.andWhere('o.health_status IN (:...health)');
     qb.setParameters(this.objectJoinParams(query));
+    // ⚠️ Mahalla xaritasidagi nuqta ham obyekt: uni bosgan odam
+    // manzilni va mas'ulni ko‘rishi kerak. Chaqiruv `select()`
+    // zanjiridan KEYIN (`object-brief.contract.ts`).
+    selectObjectBrief(qb);
 
     const rows = await qb
       .orderBy('o.name', 'ASC')
       .getRawMany<Record<string, string>>();
     return rows.map((r) => ({
+      ...objectBriefFromRaw(r),
       id: r.id,
       code: r.code,
       name: r.name,
+      // ⚠️ So‘rov `lat/lng IS NOT NULL` bilan filtrlangan — bu yerda
+      // ular aniq son, `ObjectBrief` dagi ixtiyoriy qiymat emas.
       lat: Number(r.lat),
       lng: Number(r.lng),
       healthStatus: r.healthStatus as ObjectHealth,

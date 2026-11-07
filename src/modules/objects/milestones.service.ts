@@ -30,6 +30,11 @@ import { PhotoVisionRunner } from '../ai/vision/photo-vision.runner';
 import { createPhotoReportInTx } from '../photo-reports/photo-report.factory';
 import { ObjectHealthService } from './object-health.service';
 import { ObjectsService } from './objects.service';
+import {
+  objectBriefFromRaw,
+  selectObjectBrief,
+  type ObjectBrief,
+} from '../../common/contracts/object-brief.contract';
 import type {
   CalendarQueryDto,
   CreateMilestoneDto,
@@ -38,7 +43,8 @@ import type {
   UpdateMilestoneDto,
 } from './dto/milestone.dto';
 
-export interface CalendarItem {
+/** ⚠️ Joylashuv va mas'ul — `ObjectBrief` dan (hamma javob bilan AYNI shakl). */
+export interface CalendarItem extends ObjectBrief {
   id: string;
   objectId: string;
   objectName: string;
@@ -573,6 +579,11 @@ export class MilestonesService {
         userContractorId: user.contractorId,
       });
 
+    // ⚠️ Kalendar katagidagi bosqich ham OBYEKTGA tegishli: «qayerda
+    // va kim javobgar» savoli bu ekranda ham beriladi. Chaqiruv
+    // `select()` dan KEYIN (`object-brief.contract.ts`).
+    selectObjectBrief(qb);
+
     const rows = await qb.getRawMany<Record<string, string>>();
 
     return rows.map((r) => {
@@ -584,6 +595,7 @@ export class MilestonesService {
         ? 0
         : Math.max(0, diffInDays(r.plannedEnd, today) ?? 0);
       return {
+        ...objectBriefFromRaw(r),
         id: r.id,
         objectId: r.objectId,
         objectName: r.objectName,

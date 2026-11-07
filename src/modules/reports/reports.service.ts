@@ -13,6 +13,7 @@ import {
   STATUS_LABELS_UZ,
 } from '../../helpers/object-health.helpers';
 import { GeoService } from '../geo/geo.service';
+import { fullName } from '../../helpers/person-name.helpers';
 
 export interface ProgressTimelinePoint {
   month: string;
@@ -176,9 +177,16 @@ export class ReportsService {
       { header: 'Kod', key: 'code', width: 16 },
       { header: 'Obyekt nomi', key: 'name', width: 44 },
       { header: 'Tuman', key: 'district', width: 18 },
+      // ⚠️ MANZIL — tuman yonida. Excel ko‘pincha dala ishiga chop
+      // etiladi: «Baliqchi tumani» degan yozuv bilan obyektni topib
+      // bo‘lmaydi, ko‘cha va uy raqami bilan esa topiladi.
+      { header: 'Manzil', key: 'address', width: 40 },
+      { header: 'Koordinata', key: 'coords', width: 22 },
       { header: 'Turi', key: 'type', width: 22 },
       { header: 'Pudratchi', key: 'contractor', width: 30 },
       { header: 'Mas’ul', key: 'responsible', width: 24 },
+      { header: 'Mas’ul lavozimi', key: 'responsiblePosition', width: 26 },
+      { header: 'Mas’ul telefoni', key: 'responsiblePhone', width: 18 },
       { header: 'Reja boshlanishi', key: 'plannedStart', width: 18 },
       { header: 'Reja muddati', key: 'plannedEnd', width: 18 },
       { header: 'Bajarilish, %', key: 'progress', width: 14 },
@@ -198,11 +206,16 @@ export class ReportsService {
         code: o.code,
         name: o.name,
         district: o.district?.shortName ?? '—',
+        address: o.address ?? '—',
+        // ⚠️ Koordinata MASHINA uchun — `lat, lng` tartibida, nuqta
+        // ajratgich bilan: Google Maps va Yandex shu shaklni tushunadi.
+        // Bo‘sh qiymat `—` bo‘ladi, «null» yoki bo‘sh katak emas.
+        coords: o.lat !== null && o.lng !== null ? `${o.lat}, ${o.lng}` : '—',
         type: o.type?.name ?? '—',
         contractor: o.contractor?.name ?? '—',
-        responsible: o.responsible
-          ? `${o.responsible.lastName} ${o.responsible.firstName}`
-          : '—',
+        responsible: o.responsible ? fullName(o.responsible) : '—',
+        responsiblePosition: o.responsible?.position ?? '—',
+        responsiblePhone: o.responsible?.phone ?? '—',
         // ⚠️ Sana `formatDateUz` orqali — Excel ham foydalanuvchi ko‘radigan
         // joy, u yerda ham formati bitta bo‘lishi kerak.
         plannedStart: formatDateUz(o.plannedStartDate, { utc: true }),
@@ -294,6 +307,8 @@ export class ReportsService {
       .leftJoinAndSelect('o.district', 'dist')
       .innerJoinAndSelect('d.reason', 'r')
       .leftJoinAndSelect('d.responsible', 'resp')
+      // ⚠️ Obyekt KURATORI — kechikishning o‘z mas'ulidan boshqa odam.
+      .leftJoinAndSelect('o.responsible', 'objectResponsible')
       .where('o.deleted_at IS NULL')
       .orderBy('d.delayDays', 'DESC');
     if (regionId) qb.andWhere('o.region_id = :regionId', { regionId });
@@ -308,6 +323,12 @@ export class ReportsService {
     this.setHeader(sheet, [
       { header: 'Obyekt', key: 'object', width: 44 },
       { header: 'Tuman', key: 'district', width: 18 },
+      { header: 'Obyekt manzili', key: 'address', width: 40 },
+      // ⚠️ IKKI XIL MAS'UL bor va ular bitta varaqda yonma-yon turadi:
+      // «Obyekt mas'uli» — kurator, «Mas'ul» — shu kechikishni hal
+      // qilish biriktirilgan odam. Bitta ustunga yig'ilsa, hisobotni
+      // o'qiyotgan odam kimdan so'rashni bilmay qolardi.
+      { header: 'Obyekt mas’uli', key: 'objectResponsible', width: 24 },
       { header: 'Sabab', key: 'reason', width: 30 },
       { header: 'Kechikish, kun', key: 'days', width: 15 },
       { header: 'Jiddiylik', key: 'severity', width: 14 },
@@ -328,6 +349,10 @@ export class ReportsService {
       sheet.addRow({
         object: d.object?.name ?? '—',
         district: d.object?.district?.shortName ?? '—',
+        address: d.object?.address ?? '—',
+        objectResponsible: d.object?.responsible
+          ? fullName(d.object.responsible)
+          : '—',
         reason: d.reason?.name ?? '—',
         days: d.delayDays,
         severity: RISK_LABELS_UZ[d.severity],

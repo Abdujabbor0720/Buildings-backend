@@ -6,11 +6,15 @@ import {
   ObjectStatus,
   RiskLevel,
 } from '../../common/constants/enums';
+import {
+  objectBriefFromRaw,
+  selectObjectBrief,
+  type ObjectBrief,
+} from '../../common/contracts/object-brief.contract';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import { PaginatedResult } from '../../common/dto/pagination.dto';
 import { ConstructionObject } from '../../database/entities/construction-object.entity';
 import { tashkentToday } from '../../helpers/date.helpers';
-import { shortName } from '../../helpers/person-name.helpers';
 import { isoDate, pct, scopedObjects } from './dashboard-scope';
 import { KpiMetric } from './dto/kpi-metric.dto';
 import type { KpiMetricObjectsQueryDto } from './dto/kpi-metric.dto';
@@ -151,7 +155,8 @@ export interface KpiMetricDetail {
   generatedAt: string;
 }
 
-export interface KpiMetricObject {
+/** ⚠️ Joylashuv va mas'ul — `ObjectBrief` dan, hamma javob bilan AYNI shakl. */
+export interface KpiMetricObject extends ObjectBrief {
   id: string;
   code: string;
   name: string;
@@ -170,7 +175,6 @@ export interface KpiMetricObject {
   totalCost: string;
   fundedAmount: string;
   contractorName: string | null;
-  responsibleName: string | null;
   primaryReason: string | null;
   lastReportAt: string | null;
 }
@@ -355,11 +359,10 @@ export class DashboardMetricsService {
 
     const sortColumn = SORTABLE[query.sortBy ?? ''] ?? 'o.planned_end_date';
 
-    const rows = await this.filtered(metric, query, user)
+    const qb = this.filtered(metric, query, user)
       .innerJoin('o.district', 'd')
       .innerJoin('o.type', 't')
       .leftJoin('o.contractor', 'c')
-      .leftJoin('o.responsible', 'resp')
       .leftJoin('o.primaryDelayReason', 'dr')
       .select('o.id', 'id')
       .addSelect('o.code', 'code')
@@ -380,8 +383,6 @@ export class DashboardMetricsService {
       .addSelect('t.name', 'typeName')
       .addSelect('t.color', 'typeColor')
       .addSelect('c.name', 'contractorName')
-      .addSelect('resp.first_name', 'responsibleFirstName')
-      .addSelect('resp.last_name', 'responsibleLastName')
       .addSelect('dr.name', 'primaryReason')
       .orderBy(sortColumn, query.sortOrder)
       // ⚠️ Ikkinchi darajali saralash MAJBURIY: teng qiymatlarda
@@ -392,19 +393,15 @@ export class DashboardMetricsService {
       // (`getRawMany`), ya’ni TypeORM ning «distinct id» sahifalashi
       // bu yerda umuman qo‘llanmaydi va `take` jim e’tiborsiz qolardi.
       .limit(query.limit)
-      .offset(query.skip)
-      .getRawMany<Record<string, string | null>>();
+      .offset(query.skip);
+
+    // ⚠️ `select()` zanjiridan KEYIN (`object-brief.contract.ts`).
+    selectObjectBrief(qb);
+    const rows = await qb.getRawMany<Record<string, string | null>>();
 
     const items: KpiMetricObject[] = rows.map((r) => {
-      const person = {
-        firstName: r.responsibleFirstName,
-        lastName: r.responsibleLastName,
-      };
-      const hasResponsible = Boolean(
-        r.responsibleLastName ?? r.responsibleFirstName,
-      );
-
       return {
+        ...objectBriefFromRaw(r),
         id: String(r.id),
         code: String(r.code),
         name: String(r.name),
@@ -423,10 +420,6 @@ export class DashboardMetricsService {
         totalCost: String(r.totalCost ?? '0'),
         fundedAmount: String(r.fundedAmount ?? '0'),
         contractorName: r.contractorName ?? null,
-        // ⚠️ Ism helper bilan yig‘iladi: xom qatorda `User.shortName`
-        // getteri ishlamaydi va formulani joyida yozsak, bir ekranda
-        // «J. Karimov», boshqasida «Jahongir Karimov» chiqib qolardi.
-        responsibleName: hasResponsible ? shortName(person) : null,
         primaryReason: r.primaryReason ?? null,
         lastReportAt: r.lastReportAt
           ? new Date(r.lastReportAt).toISOString()
