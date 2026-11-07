@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  Repository,
-  type ObjectLiteral,
-  type SelectQueryBuilder,
-} from 'typeorm';
+import { Repository, type SelectQueryBuilder } from 'typeorm';
 import { ConstructionObject } from '../../database/entities/construction-object.entity';
 import { PhotoReport } from '../../database/entities/photo-report.entity';
 import { ObjectHealth, ObjectStatus } from '../../common/constants/enums';
@@ -16,6 +12,7 @@ import {
   type DelayReasonBreakdown,
 } from '../delays/delays.service';
 import { GeoService, type DistrictStats } from '../geo/geo.service';
+import { applyUserScope, isoDate, pct, scopedObjects } from './dashboard-scope';
 import type { DashboardQueryDto } from './dto/dashboard-query.dto';
 
 /* ───────────────────────── Javob shakllari ───────────────────────── */
@@ -570,7 +567,7 @@ export class DashboardService {
       .addOrderBy('p.id', 'ASC')
       .limit(limit);
 
-    this.applyUserScope(qb, user);
+    applyUserScope(qb, user);
     if (query.regionId)
       qb.andWhere('o.region_id = :regionId', { regionId: query.regionId });
     if (query.districtIds?.length) {
@@ -632,86 +629,16 @@ export class DashboardService {
     }));
   }
 
-  /** Filtr + rol doirasi qo‘llangan asosiy so‘rov. */
+  /**
+   * Filtr + rol doirasi qo‘llangan asosiy so‘rov.
+   *
+   * ⚠️ Mantiq `dashboard-scope.ts` da — kartalar va ularning batafsil
+   * sahifalari AYNI to‘plamni ko‘rishi uchun (nusxa ko‘chirmang).
+   */
   private scoped(
     query: DashboardQueryDto,
     user: AuthUser,
   ): SelectQueryBuilder<ConstructionObject> {
-    const qb = this.objects.createQueryBuilder('o');
-
-    // Bekor qilinganlar HECH QACHON sanalmaydi — ular endi loyiha emas.
-    qb.where('o.status != :cancelled', { cancelled: ObjectStatus.CANCELLED });
-    if (!query.includeCompleted) {
-      qb.andWhere('o.status != :completedFilter', {
-        completedFilter: ObjectStatus.COMPLETED,
-      });
-    }
-    if (query.regionId)
-      qb.andWhere('o.region_id = :regionId', { regionId: query.regionId });
-    if (query.districtIds?.length) {
-      qb.andWhere('o.district_id IN (:...districtIds)', {
-        districtIds: query.districtIds,
-      });
-    }
-    if (query.typeIds?.length)
-      qb.andWhere('o.type_id IN (:...typeIds)', { typeIds: query.typeIds });
-    // ⚠️ Yil oralig‘i — DASTUR DAVRI, topshirish yili EMAS.
-    // Obyekt davri («2025-03-01 … 2029-06-30») oraliq bilan KESISHSA,
-    // u shu dasturga kiradi. Faqat `planned_end_date` bo‘yicha filtrlansa,
-    // 2028-yilda topshiriladigan obyekt «2024–2027 dasturi» dan tushib
-    // qolardi — holbuki unga pul aynan shu davrda ajratilgan.
-    if (query.yearFrom) {
-      qb.andWhere('EXTRACT(YEAR FROM o.planned_end_date) >= :yearFrom', {
-        yearFrom: query.yearFrom,
-      });
-    }
-    if (query.yearTo) {
-      qb.andWhere('EXTRACT(YEAR FROM o.planned_start_date) <= :yearTo', {
-        yearTo: query.yearTo,
-      });
-    }
-
-    this.applyUserScope(qb, user);
-    return qb;
+    return scopedObjects(this.objects, query, user);
   }
-
-  /** Rol doirasi — `o` taxallusi ikkala so‘rovda ham bir xil ataladi. */
-  private applyUserScope<T extends ObjectLiteral>(
-    qb: SelectQueryBuilder<T>,
-    user: AuthUser,
-  ): void {
-    if (user.contractorId) {
-      qb.andWhere('o.contractor_id = :scopeContractorId', {
-        scopeContractorId: user.contractorId,
-      });
-      return;
-    }
-    if (user.districtId) {
-      qb.andWhere('o.district_id = :scopeDistrictId', {
-        scopeDistrictId: user.districtId,
-      });
-      return;
-    }
-    if (user.regionId)
-      qb.andWhere('o.region_id = :scopeRegionId', {
-        scopeRegionId: user.regionId,
-      });
-  }
-}
-
-function pct(part: number, total: number): number {
-  if (total <= 0) return 0;
-  return Number(((part / total) * 100).toFixed(1));
-}
-
-/**
- * `date` ustuni drayver darajasida STRING bo‘lib qaytadi
- * (`config/pg-types.ts`), shuning uchun bu yerda faqat kesish kifoya.
- * `Date` bo‘lib kelsa — mahalliy komponentlardan yig‘amiz: `toISOString()`
- * Toshkent yarim tunini bir kun orqaga surib yuborardi.
- */
-function isoDate(value: string | Date): string {
-  if (typeof value === 'string') return value.slice(0, 10);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
 }

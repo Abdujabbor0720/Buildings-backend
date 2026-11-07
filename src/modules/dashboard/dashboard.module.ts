@@ -5,6 +5,7 @@ import { PhotoReport } from '../../database/entities/photo-report.entity';
 import { DelaysModule } from '../delays/delays.module';
 import { GeoModule } from '../geo/geo.module';
 import { DashboardController } from './dashboard.controller';
+import { DashboardMetricsService } from './dashboard-metrics.service';
 import { DashboardService } from './dashboard.service';
 
 @Module({
@@ -14,7 +15,7 @@ import { DashboardService } from './dashboard.service';
     DelaysModule,
   ],
   controllers: [DashboardController],
-  providers: [DashboardService],
+  providers: [DashboardService, DashboardMetricsService],
   exports: [DashboardService],
 })
 export class DashboardModule {}
