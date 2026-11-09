@@ -301,6 +301,7 @@ ko‘rsatiladi.
 |---|---|
 | `andijon-districts.geojson` | 16 ta tuman/shahar chegarasi (OpenStreetMap, ODbL 1.0) |
 | `andijon-mahallas.geojson` | Mahalla (MFY) chegaralari (OpenStreetMap, ODbL 1.0) |
+| `andijon-settlements.geojson` | Aholi punktlari — xaritadagi moʻljal yozuvlari (OSM, ODbL 1.0) |
 | `distribution.json` | Taqsimot mo‘ljallari: 195 obyekt, 142/38/15, 87/68/40 … |
 | `object-templates.json` | Obyekt nomi shablonlari, narx va quvvat oraliqlari |
 | `featured-objects.json` | Maketdagi aniq qatorlar (TOP-5, foto-hisobotlar) |
@@ -336,10 +337,29 @@ bazada haqiqiy obyektlarni oʻchiradi; `geo:sync` esa faqat chegaralarga
 tegadi, mahallani oʻchirmaydi (nofaol qiladi) va obyektlarni mahallaga
 qaytadan biriktiradi.
 
-⚠️ **Qoplama toʻliq emas** va bu kutilgan hol: OSM da baʼzi tumanlarning
-mahalla chegaralari hali yoʻq. Bunday tumanda soxta chegara
-**chizilmaydi** — xarita fon qatlami ustida obyektlarni nuqta bilan
-koʻrsatadi (`DistrictMap`, `bareDistrict`).
+⚠️ **MFY qoplamasi toʻliq emas** va buni oʻzgartirib boʻlmaydi: OSM da
+mahalla chegarasi faqat **Andijon shahri** (91) va **Andijon tumani** (7)
+uchun chizilgan. Qolgan 14 tuman uchun ochiq manbada bunday chegara
+YOʻQ — tekshirilgan:
+
+| Soʻrov | Natija |
+|---|---|
+| `rel` `admin_level=10` | 300 ta (bbox), **98 tasi Andijonda** |
+| `rel` `admin_level=9` / `8` | **0** |
+| `way` `admin_level=8/9/10` | **0** |
+| `place=neighbourhood` | 35 ta, lekin MFY emas (doʻkon, bogʻcha nomlari) |
+| geoBoundaries / GADM / HDX | ADM2 (tuman) darajasida toʻxtaydi |
+
+⚠️ **SOXTA CHEGARA CHIZILMAYDI.** Chegarasi yoʻq tumanda xarita
+viloyat kesimi bilan **AYNI dizaynda** chiziladi: tumanning oʻzi koʻk
+koʻpburchak boʻladi, ustida obyekt belgilari va **aholi punktlari
+nomlari** (`andijon-settlements.geojson`) turadi. Aholi punkti —
+maʼmuriy birlik EMAS, moʻljal: obyekt unga biriktirilmaydi, hisobotda
+kesim boʻlmaydi.
+
+Rasmiy MFY chegara fayli qoʻlga kirsa, `andijon-mahallas.geojson` ni
+almashtirib `npm run geo:sync` qilish kifoya — boshqa hech narsa
+oʻzgartirilmaydi.
 
 ---
 

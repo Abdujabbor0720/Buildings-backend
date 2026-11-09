@@ -8,6 +8,8 @@ import { Region } from '../../database/entities/region.entity';
 import { ObjectHealth } from '../../common/constants/enums';
 import { bboxOf, bboxOfPoints, unionBbox } from '../../helpers/geo.helpers';
 import type { DistrictStatsQueryDto } from './dto/geo-query.dto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   objectBriefFromRaw,
   selectObjectBrief,
@@ -58,6 +60,79 @@ function dominantHealthOf(
   if (s.delayed / s.total >= 0.25) return ObjectHealth.DELAYED;
   if (s.onSchedule === 0 && s.notStarted > 0) return ObjectHealth.NOT_STARTED;
   return ObjectHealth.ON_SCHEDULE;
+}
+
+/** Xaritadagi mo‘ljal yozuvi: shahar, shaharcha yoki qishloq. */
+export interface Settlement {
+  name: string;
+  /** `city | town | village | hamlet` — yozuv o‘lchami shunga qarab. */
+  kind: string;
+  /** 1 — shahar … 4 — eng kichik qishloq. */
+  rank: number;
+  lat: number;
+  lng: number;
+}
+
+/**
+ * AHOLI PUNKTLARI — fayldan, BIR MARTA.
+ *
+ * ⚠️ Bazada jadval YO‘Q va kerak ham emas: bu ma’muriy birlik emas,
+ * xaritadagi MO‘LJAL yozuvi. Obyekt unga biriktirilmaydi, hisobotda
+ * kesim bo‘lmaydi — faqat «bu nuqta qayerda» degan savolga javob
+ * beradi. Jadval ochilsa, migratsiya, seed va sinxronlash kerak
+ * bo‘lardi, foyda esa o‘sha-o‘sha.
+ *
+ * ⚠️ Fayl BIR MARTA o‘qiladi va xotirada qoladi (425 ta nuqta,
+ * ~40 KB): har so‘rovda diskdan o‘qish tuman xaritasini sekinlashtirardi.
+ *
+ * ⚠️ Fayl YO‘Q bo‘lsa xizmat YIQILMAYDI — bo‘sh ro‘yxat qaytadi.
+ * Mo‘ljal yozuvi — qulaylik, u tufayli butun xarita ishlamay
+ * qolishi mumkin emas.
+ */
+let settlementCache: Map<string, Settlement[]> | null = null;
+
+function loadSettlements(): Map<string, Settlement[]> {
+  if (settlementCache) return settlementCache;
+
+  const byDistrict = new Map<string, Settlement[]>();
+  try {
+    const file = join(
+      __dirname,
+      '..',
+      '..',
+      'database',
+      'seeds',
+      'data',
+      'andijon-settlements.geojson',
+    );
+    const geo = JSON.parse(readFileSync(file, 'utf8')) as {
+      features: Array<{
+        geometry: { coordinates: [number, number] };
+        properties: {
+          name: string;
+          kind: string;
+          rank: number;
+          districtCode: string;
+        };
+      }>;
+    };
+    for (const f of geo.features) {
+      const list = byDistrict.get(f.properties.districtCode) ?? [];
+      list.push({
+        name: f.properties.name,
+        kind: f.properties.kind,
+        rank: f.properties.rank,
+        lng: f.geometry.coordinates[0],
+        lat: f.geometry.coordinates[1],
+      });
+      byDistrict.set(f.properties.districtCode, list);
+    }
+  } catch {
+    /* Fayl yo‘q yoki buzuq — mo‘ljalsiz ishlaymiz. */
+  }
+
+  settlementCache = byDistrict;
+  return byDistrict;
 }
 
 @Injectable()
@@ -452,6 +527,15 @@ export class GeoService {
        * Mahalla ham, obyekt ham bo'lmasa — tumanning o'ziga moslanadi.
        */
       bbox: dataBbox(shapes, objects) ?? bboxOf(district.geometry),
+      /*
+       * MO‘LJAL YOZUVLARI — chegarasi yo‘q tuman uchun HAYOTIY.
+       *
+       * ⚠️ OSM da mahalla chegarasi faqat ikki tumanda bor; qolgan
+       * o‘n to‘rttasida xarita bo‘m-bo‘sh ko‘pburchak bo‘lib
+       * qolardi. Qishloq nomlari obyekt qayerda ekanini aytadi va
+       * buning uchun soxta chegara chizish SHART EMAS.
+       */
+      settlements: loadSettlements().get(district.code) ?? [],
       /* Qoplama o‘lchovi — ekranda ochiq aytiladi: mahallasi aniqlanmagan
          obyekt «yo‘qolgan» emas, chegarasi hali yuklanmagan. */
       coverage: {
