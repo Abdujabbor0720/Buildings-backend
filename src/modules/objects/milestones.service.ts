@@ -313,9 +313,42 @@ export class MilestonesService {
         'Bekor qilingan obyekt bo‘yicha topshiruv qabul qilinmaydi',
       );
     }
+    /*
+     * ⚠️ TOPSHIRILGAN OBYEKT HAM YOPIQ. U nazoratdan chiqqan: unga
+     * maydondan yangi foiz yozish tugallangan ishning tarixini
+     * orqadan o‘zgartirish bo‘lardi. Ma'lumotda xato bo‘lsa, u
+     * bosqichni TAHRIRLASH orqali to‘g‘rilanadi (`update`), topshiruv
+     * orqali emas.
+     */
+    if (object.status === ObjectStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Obyekt allaqachon topshirilgan — yangi topshiruv qabul qilinmaydi',
+      );
+    }
 
     const percent = dto.progressPercent ?? 100;
     const previousPercent = Number(milestone.progressPercent);
+
+    /*
+     * ⚠️ YAKUNLANGAN BOSQICH QAYTA TOPSHIRILMAYDI.
+     *
+     * 100% ga yetgan bosqichda topshiriladigan narsa qolmaydi: qayta
+     * topshiruv faqat hisobotlar sonini oshirib, «N tasi topshirilgan»
+     * ko‘rsatkichini ma'nosiz o‘stirardi va bosqichning topshirilgan
+     * sanasini orqaga surardi.
+     *
+     * ⚠️ TUZATISH YO‘LI OCHIQ QOLADI: foizni KAMAYTIRUVCHI topshiruv
+     * (yuqoridagi izoh sharti bilan) avvalgidek o‘tadi. Shart faqat
+     * «100% ustiga yana 100%» holatini to‘sadi — aks holda xato bilan
+     * yakunlangan bosqichni maydondagi odam umuman to‘g‘rilay olmay
+     * qolardi (unda `objects.update` ruxsati bo‘lmasligi mumkin).
+     */
+    if (previousPercent >= 100 && percent >= 100) {
+      throw new BadRequestException(
+        `«${milestone.name}» bosqichi allaqachon yakunlangan (100%) — qayta topshirish shart emas. Xato bo‘lsa, bajarilish foizini kamaytirib, sababini izohda yozing.`,
+      );
+    }
+
     if (percent < previousPercent && !dto.note?.trim()) {
       throw new BadRequestException(
         `Bosqich bajarilishi ${previousPercent}% dan ${percent}% ga kamaymoqda — sababini izohda ko‘rsating`,
