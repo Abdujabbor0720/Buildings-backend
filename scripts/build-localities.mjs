@@ -89,6 +89,48 @@ function elementToPolygons(element) {
   return rings.sort((a, b) => ringArea(b) - ringArea(a)).map((ring) => [ring]);
 }
 
+/*
+ * ───────────────── AXLATNI AJRATISH ─────────────────
+ *
+ * ⚠️ `landuse=residential` har doim ham QISHLOQ emas. OSM da shu teg
+ * bilan bitta hovli ham, zavod yotoqxonasi ham, kottej posyolkasi ham
+ * chizilgan va ba'zilariga EGASINING ISMI yozib qo'yilgan: Asaka
+ * tumanida «Marufjo Maxmudjonovich» va «Umidjon Ulugbek ogli» degan
+ * ikkita «aholi punkti» aynan shunday paydo bo'lgan edi — ekranda
+ * ikki piksellik dog' bo'lib, xaritani «faqat nuqtalar» holiga
+ * keltirgan.
+ */
+
+/** Eng kichik o'lcham: ~400 m. Haqiqiy qishloq bundan kichik emas. */
+const MIN_SPAN = 0.004;
+
+/** Ism-sharifga o'xshagan nom — bu joy nomi emas, EGASI. */
+const PERSON_NAME = /(\bo['ʻʼ’]?g['ʻʼ’]?li\b|\bogli\b|\bqizi\b|vich\b|ovna\b|evna\b)/i;
+
+function spanOf(polygons) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const rings of polygons)
+    for (const [x, y] of rings[0]) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  return Math.max(maxX - minX, maxY - minY);
+}
+
+/**
+ * ⚠️ `place=*` tegi bor maydon O'LCHAMIGA QARAMAY qoladi: unga teg
+ * qo'ygan odam «bu — qishloq» deb ataylab belgilagan, demak u kichik
+ * bo'lsa ham aholi punkti. Filtr faqat nom bilan chizilgan
+ * `landuse=residential` uchun kerak.
+ */
+function isPlausibleLocality(tags, polygons) {
+  if (PERSON_NAME.test(String(tags.name))) return false;
+  if (tags.place) return true;
+  return spanOf(polygons) >= MIN_SPAN;
+}
+
 /** Qanday turdagi maydon ekani — yozuv o'lchami shunga qarab. */
 function kindOf(tags) {
   const place = tags.place;
@@ -109,6 +151,7 @@ console.log(`   OSM dan ${osm.elements.length} ta element keldi`);
 const features = [];
 let skippedNoGeometry = 0;
 let skippedOutside = 0;
+let skippedJunk = 0;
 
 for (const element of osm.elements) {
   const name = element.tags?.name;
@@ -117,6 +160,11 @@ for (const element of osm.elements) {
   const polygons = elementToPolygons(element);
   if (!polygons || polygons.length === 0) {
     skippedNoGeometry += 1;
+    continue;
+  }
+
+  if (!isPlausibleLocality(element.tags, polygons)) {
+    skippedJunk += 1;
     continue;
   }
 
@@ -197,6 +245,7 @@ for (const f of kept) {
 console.log(`\n✅ ${kept.length} ta maydon yozildi`);
 console.log(
   `   tashlandi: ${skippedOutside} ta viloyatdan tashqarida, ` +
+    `${skippedJunk} ta juda kichik/ism-sharif, ` +
     `${skippedNested} ta ichma-ich, ${skippedNoGeometry} ta geometriyasiz`,
 );
 for (const code of districts.map((d) => d.properties.code)) {
