@@ -291,10 +291,19 @@ async function seedGeo(em: EntityManager): Promise<{
 /**
  * MAHALLALAR (MFY) — tuman xaritasining kesimi.
  *
- * ⚠️ Manba OpenStreetMap (ODbL) va QOPLAMA TO‘LIQ EMAS: faylda hozircha
- * asosan Andijon tumani va Andijon shahri bor. Chegarasi yo‘q tuman
- * uchun mahalla yozuvi ham bo‘lmaydi — bu kutilgan hol, xarita u yerda
- * obyektlarni nuqta sifatida ko‘rsatadi.
+ * ⚠️ Manba OpenStreetMap (ODbL) va QOPLAMA TO‘LIQ EMAS: OSM da mahalla
+ * (MFY) chegaralari hozircha faqat Andijon shahri va Andijon tumani
+ * uchun chizilgan (2026-11 holatiga). Qolgan 14 tumanda ular `admin_level=10`
+ * sifatida UMUMAN YO‘Q — tekshirilgan: `admin_level=9` bo‘sh,
+ * `place=neighbourhood` esa MFY emas (do‘kon, bog‘cha nomlari).
+ *
+ * ⚠️ Chegarasi yo‘q tuman uchun mahalla yozuvi ham bo‘lmaydi — bu
+ * kutilgan hol va SOXTA chegara chizilmaydi: xarita u yerda fon
+ * xaritasi ustida obyektlarni nuqta sifatida ko‘rsatadi
+ * (`DistrictMap`, `bareDistrict`).
+ *
+ * Fayl `npm run geo:build` bilan qayta yig‘iladi, jonli bazaga esa
+ * `npm run geo:sync` bilan yoziladi (seed prod'da ishlatilmaydi).
  *
  * ⚠️ Tumani topilmagan mahalla JIMGINA tashlab ketilmaydi, sanab
  * aytiladi: fayl almashtirilganda tuman kodlari mos kelmay qolishi eng

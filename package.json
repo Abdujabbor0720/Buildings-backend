@@ -30,7 +30,9 @@
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
     "bootstrap": "ts-node -r tsconfig-paths/register src/database/bootstrap/run-bootstrap.ts",
     "db:reset": "npm run schema:drop && npm run migration:run && npm run seed",
-    "db:setup": "bash scripts/setup-db.sh"
+    "db:setup": "bash scripts/setup-db.sh",
+    "geo:build": "node scripts/build-districts.mjs && node scripts/build-mahallas.mjs",
+    "geo:sync": "ts-node -r tsconfig-paths/register src/database/geo-sync/run-geo-sync.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",

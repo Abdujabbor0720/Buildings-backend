@@ -28,9 +28,11 @@ import { ConstructionObject } from './construction-object.entity';
  * asosan Andijon tumani va Andijon shahri qamrab olingan. Shuning uchun
  * «mahallasi yo‘q obyekt» ODDIY HOL, xato emas: xarita bunday
  * obyektlarni chegara ustida emas, NUQTA sifatida ko‘rsatadi va hech
- * biri hisobdan tushib qolmaydi. Rasmiy chegara fayli kelganda
- * `andijon-mahallas.geojson` almashtiriladi va seed qayta ishga
- * tushiriladi.
+ * biri hisobdan tushib qolmaydi.
+ *
+ * ⚠️ Chegaralar `npm run geo:build` bilan OpenStreetMap'dan qayta
+ * yig‘iladi va `npm run geo:sync` bilan JONLI bazaga yoziladi — seed
+ * prod'da ishlatilmaydi (u jadvallarni tozalaydi).
  */
 @Entity('mahallas')
 @Unique('uq_mahallas_district_code', ['districtId', 'code'])

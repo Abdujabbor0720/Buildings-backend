@@ -69,6 +69,8 @@ o‘chadi, qolgan hamma narsa ishlayveradi (§4.6).
 | `npm run seed` | Demo ma’lumotni qayta yozish (avval tozalaydi) |
 | `npm run db:reset` | Sxemani tashlab, qaytadan qurish va seed |
 | `npm run db:setup` | Noldan: rol, baza, kengaytma, migratsiya, seed |
+| `npm run geo:build` | Tuman va mahalla chegaralarini OpenStreetMap'dan qayta yigʻish |
+| `npm run geo:sync` | Chegaralarni **jonli bazaga** yozish (hech narsa oʻchirilmaydi) |
 
 ---
 
@@ -297,7 +299,8 @@ ko‘rsatiladi.
 
 | Fayl | Nima |
 |---|---|
-| `andijon-districts.geojson` | 16 ta tuman/shahar chegarasi (geoBoundaries, CC BY 3.0 IGO) |
+| `andijon-districts.geojson` | 16 ta tuman/shahar chegarasi (OpenStreetMap, ODbL 1.0) |
+| `andijon-mahallas.geojson` | Mahalla (MFY) chegaralari (OpenStreetMap, ODbL 1.0) |
 | `distribution.json` | Taqsimot mo‘ljallari: 195 obyekt, 142/38/15, 87/68/40 … |
 | `object-templates.json` | Obyekt nomi shablonlari, narx va quvvat oraliqlari |
 | `featured-objects.json` | Maketdagi aniq qatorlar (TOP-5, foto-hisobotlar) |
@@ -312,6 +315,31 @@ ko‘rsatkichni ko‘rsatadi.
 
 Suratlar — generatsiya qilingan SVG (`placeholder-image.ts`): repozitoriy
 rasmlar bilan shishmasligi va seed internetga chiqmasligi uchun.
+
+### Chegaralar — qayta tiklanadigan, qoʻlda tahrirlanmaydigan
+
+Tuman va mahalla chegaralari **OpenStreetMap'dan skript bilan** yigʻiladi:
+
+```bash
+npm run geo:build     # OSM → ikkala .geojson fayli
+npm run geo:sync      # fayllar → jonli baza
+npm run geo:sync -- --dry-run   # avval nima oʻzgarishini koʻrish
+```
+
+⚠️ `.geojson` fayllarni **qoʻlda tahrirlamang**: ular
+`scripts/build-districts.mjs` va `scripts/build-mahallas.mjs` natijasi.
+OSM da mahalla qoplamasi yildan yilga toʻladi — bitta buyruq bilan
+fayl yangilanadi va kim, qaysi soʻrov bilan yigʻqani maʼlum boʻladi.
+
+⚠️ `geo:sync` **`seed` EMAS**. Seed jadvallarni `TRUNCATE` qiladi va prod
+bazada haqiqiy obyektlarni oʻchiradi; `geo:sync` esa faqat chegaralarga
+tegadi, mahallani oʻchirmaydi (nofaol qiladi) va obyektlarni mahallaga
+qaytadan biriktiradi.
+
+⚠️ **Qoplama toʻliq emas** va bu kutilgan hol: OSM da baʼzi tumanlarning
+mahalla chegaralari hali yoʻq. Bunday tumanda soxta chegara
+**chizilmaydi** — xarita fon qatlami ustida obyektlarni nuqta bilan
+koʻrsatadi (`DistrictMap`, `bareDistrict`).
 
 ---
 
