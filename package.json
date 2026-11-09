@@ -31,7 +31,7 @@
     "bootstrap": "ts-node -r tsconfig-paths/register src/database/bootstrap/run-bootstrap.ts",
     "db:reset": "npm run schema:drop && npm run migration:run && npm run seed",
     "db:setup": "bash scripts/setup-db.sh",
-    "geo:build": "node scripts/build-districts.mjs && node scripts/build-mahallas.mjs && node scripts/build-settlements.mjs",
+    "geo:build": "node scripts/build-districts.mjs && node scripts/build-mahallas.mjs && node scripts/build-settlements.mjs && node scripts/build-localities.mjs",
     "geo:sync": "ts-node -r tsconfig-paths/register src/database/geo-sync/run-geo-sync.ts"
   },
   "dependencies": {

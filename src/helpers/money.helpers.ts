@@ -3,9 +3,19 @@ import { EMPTY_VALUE } from '../utils/constants';
 /**
  * Pul — bazada `numeric(18,2)`, TypeORM'dan STRING bo‘lib keladi.
  *
- * ⚠️ Summalarni JS'da qo‘shmaymiz: yig‘indi har doim SQL `SUM()` bilan
- * olinadi. Bu yerdagi funksiyalar faqat KO‘RSATISH uchun — hisob emas.
- * (7.4 trln so‘m float'da qo‘shilsa oxirgi tiyinlar suzib ketadi.)
+ * ⚠️ Faylda IKKI GURUH funksiya bor va ularni aralashtirmang:
+ *
+ *   • `formatAmount` / `formatCompactAmount` / `formatMoneyUz` …
+ *     — faqat KO‘RSATISH uchun. Ular `number` ga o‘tadi va
+ *     yaxlitlaydi: hisob-kitobga yaramaydi.
+ *
+ *   • `toCents` / `fromCents` / `sumAmounts` — HISOB uchun, BigInt
+ *     tiyinda. Yig‘indi odatda SQL `SUM()` bilan olinadi, lekin
+ *     ba'zan xotirada qo‘shishga to‘g‘ri keladi (masalan, aholi
+ *     punkti maydonidagi obyektlar — ular bazada guruhlanmaydi,
+ *     `geo.service.ts` dagi izohga qarang). O‘sha paytda `+`
+ *     ISHLATILMAYDI: ikki satrni ULAB qo‘yadi
+ *     (`'100' + '200' === '100200'`) va bu jim xatolik.
  */
 
 export type MoneyInput = string | number | null | undefined;
@@ -84,4 +94,39 @@ export function toPercent(
   const t = toNumber(total);
   if (t === 0) return 0;
   return Number(((toNumber(part) / t) * 100).toFixed(digits));
+}
+
+/* ───────────────────── HISOB — BigInt tiyinda ───────────────────── */
+
+/**
+ * `"1234.56"` → `123456n`. Noto‘g‘ri yoki bo‘sh qiymat — `0n`.
+ *
+ * ⚠️ `Number` ATAYLAB ishlatilmaydi: obyekt qiymatlari milliardlarda
+ * o‘lchanadi va 2^53 dan keyin aniqlik yo‘qoladi — ikki ekranda ikki
+ * xil yig‘indi chiqardi.
+ */
+export function toCents(value: string | number | null | undefined): bigint {
+  const [intPart = '0', fracPart = ''] = String(value ?? '0').split('.');
+  const sign = intPart.trim().startsWith('-') ? -1n : 1n;
+  const digits = intPart.replace(/\D/g, '') || '0';
+  const frac = `${fracPart.replace(/\D/g, '')}00`.slice(0, 2);
+  return sign * (BigInt(digits) * 100n + BigInt(frac));
+}
+
+/** `123456n` → `"1234.56"` — har doim ikki kasr xonasi bilan. */
+export function fromCents(value: bigint): string {
+  const negative = value < 0n;
+  const abs = negative ? -value : value;
+  const whole = abs / 100n;
+  const rest = abs % 100n;
+  return `${negative ? '-' : ''}${whole}.${String(rest).padStart(2, '0')}`;
+}
+
+/** Satr summalar yig‘indisi — natija ham satr, aniqlik yo‘qolmaydi. */
+export function sumAmounts(
+  values: ReadonlyArray<string | number | null | undefined>,
+): string {
+  let total = 0n;
+  for (const value of values) total += toCents(value);
+  return fromCents(total);
 }

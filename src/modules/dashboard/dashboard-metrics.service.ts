@@ -16,6 +16,7 @@ import { PaginatedResult } from '../../common/dto/pagination.dto';
 import { ConstructionObject } from '../../database/entities/construction-object.entity';
 import { tashkentToday } from '../../helpers/date.helpers';
 import { isoDate, pct, scopedObjects } from './dashboard-scope';
+import { fromCents, toCents } from '../../helpers/money.helpers';
 import { KpiMetric } from './dto/kpi-metric.dto';
 import type { KpiMetricObjectsQueryDto } from './dto/kpi-metric.dto';
 import type { DashboardQueryDto } from './dto/dashboard-query.dto';
@@ -811,22 +812,6 @@ function fillMonths(rows: KpiPeriodRow[]): KpiPeriodRow[] {
 function subtract(a: string, b: string): string {
   const diff = toCents(a) - toCents(b);
   return fromCents(diff > 0n ? diff : 0n);
-}
-
-function toCents(value: string): bigint {
-  const [intPart = '0', fracPart = ''] = String(value ?? '0').split('.');
-  const sign = intPart.startsWith('-') ? -1n : 1n;
-  const digits = intPart.replace('-', '') || '0';
-  const frac = `${fracPart}00`.slice(0, 2);
-  return sign * (BigInt(digits) * 100n + BigInt(frac));
-}
-
-function fromCents(value: bigint): string {
-  const negative = value < 0n;
-  const abs = negative ? -value : value;
-  const whole = abs / 100n;
-  const rest = abs % 100n;
-  return `${negative ? '-' : ''}${whole}.${String(rest).padStart(2, '0')}`;
 }
 
 /** `part / whole` foizi — nol maxrajda 0. */

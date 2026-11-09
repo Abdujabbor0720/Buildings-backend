@@ -302,6 +302,7 @@ ko‘rsatiladi.
 | `andijon-districts.geojson` | 16 ta tuman/shahar chegarasi (OpenStreetMap, ODbL 1.0) |
 | `andijon-mahallas.geojson` | Mahalla (MFY) chegaralari (OpenStreetMap, ODbL 1.0) |
 | `andijon-settlements.geojson` | Aholi punktlari — xaritadagi moʻljal yozuvlari (OSM, ODbL 1.0) |
+| `andijon-localities.geojson` | Aholi punkti MAYDONLARI — tuman kesimidagi koʻrsatkich koʻpburchaklari (OSM, ODbL 1.0) |
 | `distribution.json` | Taqsimot mo‘ljallari: 195 obyekt, 142/38/15, 87/68/40 … |
 | `object-templates.json` | Obyekt nomi shablonlari, narx va quvvat oraliqlari |
 | `featured-objects.json` | Maketdagi aniq qatorlar (TOP-5, foto-hisobotlar) |
@@ -322,10 +323,23 @@ rasmlar bilan shishmasligi va seed internetga chiqmasligi uchun.
 Tuman va mahalla chegaralari **OpenStreetMap'dan skript bilan** yigʻiladi:
 
 ```bash
-npm run geo:build     # OSM → ikkala .geojson fayli
+npm run geo:build     # OSM → toʻrtala .geojson fayli
 npm run geo:sync      # fayllar → jonli baza
 npm run geo:sync -- --dry-run   # avval nima oʻzgarishini koʻrish
 ```
+
+⚠️ **DEPLOY'DA `geo:sync` SHART EMAS.** Chegaralarni bazaga yozish
+`GeoBoundariesSync` **migratsiyasi** bilan boradi va deploy baribir
+`npm run migration:run` ni ishga tushiradi (§8). Ilgari bu faqat
+qoʻlda ishga tushiriladigan skript edi va natija shu boʻlgandi:
+fayllarda 16 ta tumanning aniq chegarasi, jonli bazada esa eski,
+qoʻpol kontur — Xonobod 6 nuqta, Andijon shahri 15 nuqta. Oʻsha
+qoʻpol chegaralar sababli 53 ta mahalla notoʻgʻri tumanga
+biriktirilgan va tuman xaritasi ishlamay qolgan edi.
+
+`geo:sync` skripti OSM'dan qayta import qilingandan keyin —
+deploy'dan TASHQARIDA — chegarani yangilash uchun qoladi. Fayl
+oʻzgargach yangi migratsiya qoʻshilsa, deploy ham oʻzi yangilaydi.
 
 ⚠️ `.geojson` fayllarni **qoʻlda tahrirlamang**: ular
 `scripts/build-districts.mjs` va `scripts/build-mahallas.mjs` natijasi.
@@ -350,12 +364,33 @@ YOʻQ — tekshirilgan:
 | `place=neighbourhood` | 35 ta, lekin MFY emas (doʻkon, bogʻcha nomlari) |
 | geoBoundaries / GADM / HDX | ADM2 (tuman) darajasida toʻxtaydi |
 
-⚠️ **SOXTA CHEGARA CHIZILMAYDI.** Chegarasi yoʻq tumanda xarita
-viloyat kesimi bilan **AYNI dizaynda** chiziladi: tumanning oʻzi koʻk
-koʻpburchak boʻladi, ustida obyekt belgilari va **aholi punktlari
-nomlari** (`andijon-settlements.geojson`) turadi. Aholi punkti —
-maʼmuriy birlik EMAS, moʻljal: obyekt unga biriktirilmaydi, hisobotda
-kesim boʻlmaydi.
+⚠️ **SOXTA CHEGARA CHIZILMAYDI.** Uning oʻrniga OSM'ning BOSHQA,
+haqiqiy qatlami olinadi — qishloq va shaharchalarning **yashash
+maydonlari** (`landuse=residential`, `place=village|town|…`,
+`andijon-localities.geojson`, 131 ta maydon, 16 tumanning 14 tasida).
+Ular oʻlchangan va real; maʼmuriy birlik EMAS va ekranda shunday
+ham atalmaydi.
+
+Tuman kesimida qaysi qatlam chizilgani javobda ochiq turadi
+(`coverage.layer`) va sarlavha shunga qarab yoziladi:
+
+| `layer` | Nima chiziladi | Sarlavha |
+|---|---|---|
+| `mahalla` | MFY chegaralari (2 tuman) | «… — mahallalar kesimida» |
+| `locality` | Aholi punkti maydonlari (13 tuman) | «… — aholi punktlari kesimida» |
+| `none` | Tumanning oʻz konturi (Xonobod shahri) | «… — obyektlar kesimida» |
+
+⚠️ Obyekt aholi punktiga **biriktirilmaydi**: `construction_objects` da
+`mahalla_id` bor, `locality_id` esa yoʻq va boʻlishi ham shart emas.
+Xaritadagi son har soʻrovda nuqta-koʻpburchak tekshiruvi bilan
+XOTIRADA hisoblanadi (`buildLocalityFeatures`) — jadval ochilsa,
+migratsiya, sinxronlash va «qaysi raqam toʻgʻri» degan ikkinchi
+haqiqat manbai paydo boʻlardi.
+
+⚠️ Xarita HAR DOIM butun tumanga moslanadi (`bbox` — tuman konturi ∪
+obyektlar ∪ yozuvlar). Ilgari u MAʼLUMOT chegarasiga moslanardi va
+mahallasi yoʻq tumanda oʻnta obyekt toʻdasiga qisilib, tumanning oʻz
+konturi hamda qishloq nomlari koʻrinish tashqarisida qolardi.
 
 Rasmiy MFY chegara fayli qoʻlga kirsa, `andijon-mahallas.geojson` ni
 almashtirib `npm run geo:sync` qilish kifoya — boshqa hech narsa

@@ -6,7 +6,14 @@ import { District } from '../../database/entities/district.entity';
 import { Mahalla } from '../../database/entities/mahalla.entity';
 import { Region } from '../../database/entities/region.entity';
 import { ObjectHealth } from '../../common/constants/enums';
-import { bboxOf, bboxOfPoints, unionBbox } from '../../helpers/geo.helpers';
+import {
+  bboxOf,
+  bboxOfPoints,
+  pointInGeometry,
+  unionBbox,
+  type GeoJsonGeometry,
+} from '../../helpers/geo.helpers';
+import { sumAmounts } from '../../helpers/money.helpers';
 import type { DistrictStatsQueryDto } from './dto/geo-query.dto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -132,6 +139,193 @@ function loadSettlements(): Map<string, Settlement[]> {
   }
 
   settlementCache = byDistrict;
+  return byDistrict;
+}
+
+/**
+ * Nomlarni TAQQOSLASH uchun soddalashtirish.
+ *
+ * ⚠️ Faqat solishtirish uchun — ekranga HECH QACHON chiqmaydi.
+ * OSM da bitta qishloq nomi bir necha xil yoziladi: apostrof turlari
+ * (`ʻ ʼ ’`), bo‘sh joy, «qishlog‘i» qo‘shimchasi. Oddiy `===`
+ * bilan taqqoslash ularning hech birini ushlamasdi.
+ */
+function normalizeName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[ʻʼ'`’‘´]/g, '')
+    .replace(/\s+/g, '')
+    .replace(/(qishlogi|qishloq|shaharchasi|mahallasi|massivi)$/u, '');
+}
+
+/**
+ * AHOLI PUNKTI MAYDONLARIDAN KO‘RSATKICH KO‘PBURCHAKLARI.
+ *
+ * ⚠️ Son BAZADA guruhlanmaydi, XOTIRADA hisoblanadi — sabab shundaki,
+ * obyekt aholi punktiga BIRIKTIRILMAGAN: `construction_objects` da
+ * `mahalla_id` bor, `locality_id` esa yo‘q va bo‘lishi ham shart emas.
+ * Aholi punkti — ma’muriy birlik emas, XARITA qatlami; u hisobotda
+ * kesim bo‘lmaydi. Jadval ochilsa, migratsiya, sinxronlash va
+ * «qaysi raqam to‘g‘ri» degan ikkinchi haqiqat manbai paydo bo‘lardi.
+ *
+ * ⚠️ Narx hisobi: bitta tumanda ~200 obyekt va ~20 maydon, ya’ni
+ * eng yomon holatda bir necha ming nuqta-ko‘pburchak tekshiruvi —
+ * bu bitta SQL so‘rovidan ham arzon.
+ *
+ * ⚠️ Obyekt BIR MARTA sanaladi: birinchi mos maydonda to‘xtaladi
+ * (`findContaining` bilan AYNI qoida). Maydonlar kesishib qolsa ham
+ * yig‘indi tumanning umumiy sonidan oshib ketmaydi.
+ */
+function buildLocalityFeatures(
+  localities: readonly Locality[],
+  objects: ReadonlyArray<{
+    lat: number;
+    lng: number;
+    healthStatus: ObjectHealth;
+    progressPercent: number;
+    totalCost: string;
+  }>,
+) {
+  const buckets = new Map<string, typeof objects>();
+  for (const object of objects) {
+    for (const locality of localities) {
+      if (!pointInGeometry(object.lng, object.lat, locality.geometry)) continue;
+      const list = buckets.get(locality.code);
+      if (list) (list as Array<(typeof objects)[number]>).push(object);
+      else buckets.set(locality.code, [object]);
+      break;
+    }
+  }
+
+  return localities.map((locality) => {
+    const inside = buckets.get(locality.code) ?? [];
+    const count = (health: ObjectHealth) =>
+      inside.filter((o) => o.healthStatus === health).length;
+
+    const base = {
+      /*
+       * ⚠️ `districtId` — MAYDON kaliti, tuman id si EMAS. Nomi
+       * shunday, chunki shakl `DistrictStats` bilan AYNI bo‘lishi
+       * kerak: bitta xarita komponenti va bitta jadval uch darajani
+       * ham chizadi. Mahalla tomonida ham shunday (`mahallaStats`)
+       * va bosilganda nima qilish kerakligini CHAQIRUVCHI hal
+       * qiladi — `dashboard` sahifasidagi izohga qarang.
+       */
+      districtId: locality.code,
+      code: locality.code,
+      name: locality.name,
+      shortName: locality.name,
+      officialName: null as string | null,
+      centerLat: locality.centerLat,
+      centerLng: locality.centerLng,
+      total: inside.length,
+      onSchedule: count(ObjectHealth.ON_SCHEDULE),
+      delayed: count(ObjectHealth.DELAYED),
+      atRisk: count(ObjectHealth.AT_RISK),
+      notStarted: count(ObjectHealth.NOT_STARTED),
+      completed: count(ObjectHealth.COMPLETED),
+      avgProgress:
+        inside.length === 0
+          ? 0
+          : Math.round(
+              inside.reduce((sum, o) => sum + o.progressPercent, 0) /
+                inside.length,
+            ),
+      totalCost: sumAmounts(inside.map((o) => o.totalCost)),
+    };
+
+    return {
+      type: 'Feature' as const,
+      geometry: locality.geometry,
+      properties: { ...base, dominantHealth: dominantHealthOf(base) },
+    };
+  });
+}
+
+/**
+ * AHOLI PUNKTI MAYDONI — tuman kesimidagi ko‘rsatkich ko‘pburchagi.
+ *
+ * ⚠️ BU MAHALLA (MFY) CHEGARASI EMAS. Mahalla fuqarolar yig‘inlarining
+ * rasmiy chegaralari davlat kadastrida bor, lekin ochiq ma’lumot
+ * sifatida e’lon qilinmagan: OSM da ular faqat IKKI tumanda — Andijon
+ * shahri va Andijon tumanida — chizilgan. Qolgan o‘n to‘rt tumanda
+ * mahalla chegarasi YO‘Q.
+ *
+ * ⚠️ Soxta chegara CHIZILMAYDI. Uning o‘rniga OSM da o‘lchangan
+ * HAQIQIY qatlam olinadi: qishloq va shaharchalarning yashash
+ * maydonlari. Ular ma’muriy birlik emas, lekin real va aniq —
+ * «bu qishloq shu yerda va unda 3 ta obyekt bor» degan gap to‘g‘ri
+ * bo‘lib qoladi.
+ *
+ * ⚠️ Ekrandagi atama ham shunga mos: «mahallalar kesimida» EMAS,
+ * «aholi punktlari kesimida». Qaysi qatlam ishlatilgani javobda
+ * ochiq aytiladi (`coverage.layer`).
+ */
+export interface Locality {
+  code: string;
+  name: string;
+  /** `city | town | village | hamlet | quarter | residential`. */
+  kind: string;
+  centerLat: number;
+  centerLng: number;
+  geometry: GeoJsonGeometry;
+}
+
+/**
+ * ⚠️ Fayl BIR MARTA o‘qiladi (`loadSettlements` bilan AYNI sabab):
+ * u bir necha yuz ko‘pburchakdan iborat va har so‘rovda qayta
+ * tahlil qilinsa, tuman xaritasi sezilarli sekinlashardi.
+ *
+ * ⚠️ Fayl YO‘Q bo‘lsa xizmat YIQILMAYDI — bo‘sh ro‘yxat qaytadi va
+ * tuman avvalgidek bitta ko‘pburchak bo‘lib chiziladi.
+ */
+let localityCache: Map<string, Locality[]> | null = null;
+
+function loadLocalities(): Map<string, Locality[]> {
+  if (localityCache) return localityCache;
+
+  const byDistrict = new Map<string, Locality[]>();
+  try {
+    const file = join(
+      __dirname,
+      '..',
+      '..',
+      'database',
+      'seeds',
+      'data',
+      'andijon-localities.geojson',
+    );
+    const geo = JSON.parse(readFileSync(file, 'utf8')) as {
+      features: Array<{
+        geometry: GeoJsonGeometry;
+        properties: {
+          code: string;
+          name: string;
+          kind: string;
+          districtCode: string;
+          centerLat: number;
+          centerLng: number;
+        };
+      }>;
+    };
+    for (const f of geo.features) {
+      if (!f.geometry) continue;
+      const list = byDistrict.get(f.properties.districtCode) ?? [];
+      list.push({
+        code: f.properties.code,
+        name: f.properties.name,
+        kind: f.properties.kind,
+        centerLat: f.properties.centerLat,
+        centerLng: f.properties.centerLng,
+        geometry: f.geometry,
+      });
+      byDistrict.set(f.properties.districtCode, list);
+    }
+  } catch {
+    /* Fayl yo‘q yoki buzuq — tuman bitta ko‘pburchak bo‘lib chiziladi. */
+  }
+
+  localityCache = byDistrict;
   return byDistrict;
 }
 
@@ -488,16 +682,86 @@ export class GeoService {
    */
   async mahallasGeoJson(districtId: string, query: DistrictStatsQueryDto) {
     const district = await this.getDistrict(districtId);
-    const [shapes, stats, objects] = await Promise.all([
+    const [shapes, stats, objects, regionStats] = await Promise.all([
       this.mahallas.find({
         where: { districtId, isActive: true },
         order: { name: 'ASC' },
       }),
       this.mahallaStats(districtId, query),
       this.districtObjectPoints(districtId, query),
+      /* ⚠️ TUMANNING O‘Z YIG‘INDISI — xaritada tumanning o‘zi ham
+         ko‘rsatkich ko‘pburchagi bo‘lgani uchun kerak (sanoq belgisi,
+         nom yorlig‘i, ko‘rsatma). Alohida so‘rov yozilmaydi: viloyat
+         kesimidagi AYNI funksiya chaqiriladi, aks holda tuman
+         xaritasidagi son viloyat xaritasidagi sondan farq qilib
+         qolishi mumkin edi. */
+      this.districtStats({ ...query, regionId: district.regionId }),
     ]);
 
     const byId = new Map(stats.map((s) => [s.districtId, s]));
+
+    /*
+     * MO‘LJAL YOZUVLARI — chegarasi yo‘q tuman uchun HAYOTIY.
+     *
+     * ⚠️ OSM da mahalla chegarasi faqat ikki tumanda bor; qolgan
+     * o‘n to‘rttasida xarita bo‘m-bo‘sh ko‘pburchak bo‘lib qolardi.
+     * Qishloq nomlari obyekt qayerda ekanini aytadi va buning uchun
+     * soxta chegara chizish SHART EMAS.
+     *
+     * ⚠️ `bbox` dan OLDIN hisoblanadi: yozuvlar ham ko‘rinish
+     * chegarasiga kiradi (pastga qarang).
+     */
+    const totals =
+      regionStats.find((d) => d.districtId === district.id) ?? null;
+
+    /*
+     * QAYSI QATLAM CHIZILADI.
+     *
+     * ⚠️ Birinchi navbatda MAHALLA (MFY): u ma'muriy birlik va obyekt
+     * unga `mahalla_id` bilan BIRIKTIRILGAN — ya'ni xaritadagi son
+     * bilan hisobotdagi son bitta manbadan keladi.
+     *
+     * ⚠️ Mahalla chegarasi yo'q tumanda (o'n to'rttasida) — AHOLI
+     * PUNKTI MAYDONLARI: OSM da o'lchangan qishloq va shaharchalarning
+     * yashash hududlari. Ular ma'muriy birlik EMAS va shunday deb
+     * atalmaydi ham (`coverage.layer` javobda ochiq turadi), lekin
+     * real: tuman kesimi bo'm-bo'sh ko'pburchak bo'lib qolmaydi.
+     *
+     * ⚠️ BITTA maydon qatlam HISOBLANMAYDI (`>= 2`). Xonobod shahri
+     * kabi tumanda OSM da butun shahar bitta ko'pburchak bo'lib
+     * chizilgan: u tumanning o'z konturini TAKRORLAR va ekranda bir
+     * xil ikki shakl ustma-ust tushib, «kesim» degan ma'noni
+     * yo'qotardi.
+     */
+    const localities =
+      shapes.length > 0 ? [] : (loadLocalities().get(district.code) ?? []);
+    const localityFeatures =
+      localities.length >= 2 ? buildLocalityFeatures(localities, objects) : [];
+    const layer: 'mahalla' | 'locality' | 'none' =
+      shapes.length > 0
+        ? 'mahalla'
+        : localityFeatures.length > 0
+          ? 'locality'
+          : 'none';
+
+    /*
+     * ⚠️ TAKRORLANGAN MO‘LJAL YOZUVI OLIB TASHLANADI. Aholi punkti
+     * maydoni chizilganda uning nomi ko‘pburchakning O‘ZIDA yoziladi;
+     * o‘sha qishloqning mo‘ljal yozuvi ham qolsa, xaritada
+     * «O‘rmonbek» degan so‘z IKKI MARTA, bir-birining yonida
+     * turardi.
+     *
+     * ⚠️ Taqqoslash NORMALLASHTIRILGAN nom bo‘yicha: OSM da bitta joy
+     * «Qo‘rg‘oncha», «Qurgoncha» va «Кургонча» bo‘lib yozilgan
+     * bo‘lishi mumkin.
+     */
+    const drawnNames = new Set(
+      localityFeatures.map((f) => normalizeName(f.properties.name)),
+    );
+    const settlements = (loadSettlements().get(district.code) ?? []).filter(
+      (place) =>
+        layer !== 'locality' || !drawnNames.has(normalizeName(place.name)),
+    );
 
     return {
       type: 'FeatureCollection' as const,
@@ -509,66 +773,82 @@ export class GeoService {
         centerLat: district.centerLat,
         centerLng: district.centerLng,
         geometry: district.geometry,
+        /* ⚠️ Mahalla chegarasi yo‘q tumanda xarita AYNAN shu raqamlar
+           bilan chiziladi: tuman ko‘pburchagi viloyat kesimidagi
+           tumanlar kabi sanoq belgisi va ko‘rsatma oladi. */
+        stats: totals,
       },
       /*
-       * ⚠️ `bbox` — MA'LUMOT turgan joy (mahalla chegaralari + obyekt
-       * nuqtalari), tumanning butun konturi EMAS.
+       * KO'RINISH CHEGARASI — HAR DOIM TUMANNING O'ZI.
        *
-       * Sabab amaliy: mahalla qoplamasi tumanni to'liq egallamaydi va
-       * xarita butun tumanga moslansa, ellikdan ortiq mahalla
-       * markazdagi kichik dog'ga qisilib, bir-birining ustiga
-       * tushardi — na chegara, na raqam o'qilardi. Ma'lumotga
-       * moslanganda esa ular butun kartani egallaydi.
+       * ⚠️ «Tuman kesimi» degani ekranda TUMAN turishi degani: hokim
+       * tumanni tanlaganda xarita o'sha tumanga kattalashadi va
+       * boshqa hech narsa ko'rinmaydi.
        *
-       * Tumanning o'z konturi baribir chiziladi (`district.geometry`)
-       * va ko'rinish chetidan chiqib ketgani «bu — tumanning bir
-       * qismi» degan ma'noni beradi.
+       * ⚠️ Ilgari bu yerda MA'LUMOT chegarasi olinardi (mahalla
+       * konturlari + obyekt nuqtalari) va natija shu edi: Baliqchi
+       * tumanida mahalla chegarasi yo'q, shuning uchun xarita o'nta
+       * obyekt to'dasiga moslanib, tumanning o'z konturi va qishloq
+       * nomlari ko'rinish TASHQARISIGA chiqib ketgan edi — ekranda
+       * bir chetda rangli nuqtalar, boshqa chetda konturning bir
+       * bo'lagi suzib turardi.
        *
-       * Mahalla ham, obyekt ham bo'lmasa — tumanning o'ziga moslanadi.
+       * ⚠️ Tuman tashqarisidagi obyekt ham QO'SHILADI: koordinatasi
+       * xato kiritilgan obyekt ko'rinish tashqarisida qolsa,
+       * jadvaldagi son bilan xaritadagi manzara mos kelmay qolardi.
+       * Yozuvlar ham shunday — chizilgan narsa ko'rinish ichida
+       * bo'lishi shart.
        */
-      bbox: dataBbox(shapes, objects) ?? bboxOf(district.geometry),
-      /*
-       * MO‘LJAL YOZUVLARI — chegarasi yo‘q tuman uchun HAYOTIY.
-       *
-       * ⚠️ OSM da mahalla chegarasi faqat ikki tumanda bor; qolgan
-       * o‘n to‘rttasida xarita bo‘m-bo‘sh ko‘pburchak bo‘lib
-       * qolardi. Qishloq nomlari obyekt qayerda ekanini aytadi va
-       * buning uchun soxta chegara chizish SHART EMAS.
-       */
-      settlements: loadSettlements().get(district.code) ?? [],
+      bbox:
+        unionBbox(
+          unionBbox(bboxOf(district.geometry), bboxOfPoints(objects)),
+          bboxOfPoints(settlements),
+        ) ?? dataBbox(shapes, objects),
+      settlements,
       /* Qoplama o‘lchovi — ekranda ochiq aytiladi: mahallasi aniqlanmagan
          obyekt «yo‘qolgan» emas, chegarasi hali yuklanmagan. */
       coverage: {
+        /*
+         * ⚠️ QAYSI QATLAM CHIZILGANI JAVOBDA OCHIQ TURADI. Ekrandagi
+         * sarlavha ham, izoh ham shunga qarab yoziladi: aholi punkti
+         * maydonini «mahalla» deb atash — hokimga ma'muriy chegara
+         * ko'rsatganday bo'lardi, holbuki u boshqa narsa.
+         */
+        layer,
         mahallas: shapes.length,
+        localities: localityFeatures.length,
         withMahalla: objects.filter((o) => o.mahallaId).length,
         withoutMahalla: objects.filter((o) => !o.mahallaId).length,
       },
       objects,
-      features: shapes.map((m) => {
-        const s = byId.get(m.id);
-        return {
-          type: 'Feature' as const,
-          geometry: m.geometry,
-          properties: {
-            districtId: m.id,
-            code: m.code,
-            name: m.name,
-            shortName: m.name,
-            officialName: m.officialName,
-            centerLat: m.centerLat,
-            centerLng: m.centerLng,
-            total: s?.total ?? 0,
-            onSchedule: s?.onSchedule ?? 0,
-            delayed: s?.delayed ?? 0,
-            atRisk: s?.atRisk ?? 0,
-            notStarted: s?.notStarted ?? 0,
-            completed: s?.completed ?? 0,
-            avgProgress: s?.avgProgress ?? 0,
-            totalCost: s?.totalCost ?? '0',
-            dominantHealth: s?.dominantHealth ?? ObjectHealth.NOT_STARTED,
-          },
-        };
-      }),
+      features:
+        layer === 'locality'
+          ? localityFeatures
+          : shapes.map((m) => {
+              const s = byId.get(m.id);
+              return {
+                type: 'Feature' as const,
+                geometry: m.geometry as GeoJsonGeometry | null,
+                properties: {
+                  districtId: m.id,
+                  code: m.code,
+                  name: m.name,
+                  shortName: m.name,
+                  officialName: m.officialName,
+                  centerLat: m.centerLat,
+                  centerLng: m.centerLng,
+                  total: s?.total ?? 0,
+                  onSchedule: s?.onSchedule ?? 0,
+                  delayed: s?.delayed ?? 0,
+                  atRisk: s?.atRisk ?? 0,
+                  notStarted: s?.notStarted ?? 0,
+                  completed: s?.completed ?? 0,
+                  avgProgress: s?.avgProgress ?? 0,
+                  totalCost: s?.totalCost ?? '0',
+                  dominantHealth: s?.dominantHealth ?? ObjectHealth.NOT_STARTED,
+                },
+              };
+            }),
     };
   }
 
@@ -586,6 +866,11 @@ export class GeoService {
       .addSelect('o.lng', 'lng')
       .addSelect('o.health_status', 'healthStatus')
       .addSelect('o.progress_percent', 'progressPercent')
+      /* ⚠️ Qiymat ham olinadi: aholi punkti maydonining ko‘rsatmasi
+         «Umumiy qiymat» qatorini ko‘rsatadi va u xotirada, SHU
+         nuqtalardan yig‘iladi — mahalla uchun esa bazada guruhlanadi
+         (`mahallaStats`). Ikkala yo‘l ham AYNI maydondan oziqlanadi. */
+      .addSelect('o.total_cost', 'totalCost')
       .addSelect('o.mahalla_id', 'mahallaId')
       .where('o.district_id = :districtId', { districtId })
       .andWhere('o.deleted_at IS NULL')
@@ -619,6 +904,9 @@ export class GeoService {
       lng: Number(r.lng),
       healthStatus: r.healthStatus as ObjectHealth,
       progressPercent: Number(r.progressPercent),
+      /* ⚠️ `numeric` — pg uni SATR qaytaradi va shundayligicha
+         qoldiriladi: `Number()` katta summada aniqlikni yo‘qotadi. */
+      totalCost: String(r.totalCost ?? '0'),
       mahallaId: r.mahallaId ?? null,
     }));
   }
